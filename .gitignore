@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.aniuqe-dev/
+.anique-dev/
+.anique/
+.aniuqe/
+.prism-dev/
+backup_tui/
+*.log
+.env
+.DS_Store
+*.tsbuildinfo
