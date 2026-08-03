@@ -557,6 +557,18 @@ async function runAgentPass(opts: AgentRunOptions): Promise<AgentRunResult> {
     if (facing) finalText = facing;
   }
 
+  // Surface any sudo commands that need the user's password.
+  const { pendingSudoCommands } = await import("../tools/registry.js");
+  const pendingSudo = pendingSudoCommands();
+  if (pendingSudo.length > 0 && !aborted) {
+    const block =
+      `\n\n🔒 ${pendingSudo.length} command(s) need your password (I can't run them):\n` +
+      pendingSudo.map((p) => `  $ ${p.command}`).join("\n") +
+      `\nRun them yourself, or re-run after authenticating.`;
+    finalText = (finalText ? finalText.trimEnd() : "") + block;
+    push("system", `${pendingSudo.length} sudo command(s) handed to user`);
+  }
+
   if (toolCallCount >= 4 && !aborted) {
     push(
       "system",

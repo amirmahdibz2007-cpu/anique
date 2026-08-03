@@ -64,6 +64,64 @@ function resolveInWorkspace(workspace: string, p: string): string {
   return resolve(workspace, p);
 }
 
+/* -- sudo / privilege escalation queue -------------------------------- */
+/**
+ * Commands that need a password the agent does not have. The agent keeps
+ * doing everything it can, then surfaces these to the user at the end.
+ */
+const pendingSudo: Array<{ command: string; error: string }> = [];
+
+export function pendingSudoCommands(): Array<{ command: string; error: string }> {
+  return [...pendingSudo];
+}
+
+export function clearPendingSudo(): void {
+  pendingSudo.length = 0;
+}
+
+function isSudoish(command: string): boolean {
+  return /\b(sudo|doas)\b/.test(command);
+}
+
+/**
+ * Attempt a privileged command non-interactively (no password prompt).
+ * Returns { ran, output, error } — ran is false when a password is required.
+ */
+function tryRunPrivileged(command: string, cwd: string): { ran: boolean; output: string; error?: string } {
+  const cmd = command.trim();
+  // Non-interactive sudo: -n means never prompt. Fails fast if a password is needed.
+  const nonInteractive = cmd.startsWith("sudo ")
+    ? "sudo -n " + cmd.slice("sudo ".length)
+    : cmd.startsWith("doas ")
+      ? "doas -n " + cmd.slice("doas ".length)
+      : cmd;
+  try {
+    const out = execSync(nonInteractive, {
+      cwd,
+      encoding: "utf8",
+      timeout: 30_000,
+      maxBuffer: 2_000_000,
+      shell: process.platform === "win32" ? "cmd.exe" : "/bin/bash",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    return { ran: true, output: out || "(no output)" };
+  } catch (err) {
+    const e = err as { stderr?: string; message?: string; status?: number };
+    const detail = [e.stderr, e.message].filter(Boolean).join("\n").trim();
+    const wantsPassword =
+      /password|authentication|sudo: a password|permission denied/i.test(detail);
+    if (wantsPassword) {
+      return {
+        ran: false,
+        output: "",
+        error: detail.slice(0, 200) || "requires elevated privileges",
+      };
+    }
+    // Some other failure (binary missing, etc.) — report it as ran but erroring.
+    return { ran: true, output: "", error: detail.slice(0, 200) || "command error" };
+  }
+}
+
 async function gate(
   risk: RiskLevel,
   ctx: ToolContext,
@@ -246,6 +304,29 @@ const handlers: Record<string, ToolHandler> = {
       return { ok: false, output: "Command denied by user.", risk, denied: true };
     }
     try {
+      // Privileged commands: try non-interactively first. If a password is
+      // required (we don't have it), queue it and keep going — the agent can
+      // finish everything else and hand the sudo list to the user at the end.
+      if (isSudoish(command)) {
+        const pr = tryRunPrivileged(command, ctx.workspace);
+        if (pr.ran && !pr.error) {
+          return { ok: true, output: pr.output || "(no output)", risk };
+        }
+        if (!pr.ran) {
+          pendingSudo.push({ command, error: pr.error ?? "needs password" });
+          return {
+            ok: false,
+            output:
+              `[sudo] needs a password I don't have — queued for the user.\n` +
+              `I'll continue with the rest; this will be handed to you at the end.\n` +
+              `Run it yourself later: ${command}\n` +
+              `${pr.error ?? ""}`.trim(),
+            risk,
+          };
+        }
+        // Non-password failure (binary missing, etc.) — report it directly.
+        return { ok: false, output: pr.error ?? "command failed", risk };
+      }
       const out = execSync(command, {
         cwd: ctx.workspace,
         encoding: "utf8",

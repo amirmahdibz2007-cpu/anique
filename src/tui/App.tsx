@@ -1105,8 +1105,24 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
           clearSessionAllows();
           clearWebSearchConsent();
           lockSession();
+          const { clearPendingSudo } = await import("../tools/registry.js");
+          clearPendingSudo();
           pushSystem("cleared");
           break;
+        case "sudo":
+        case "pending": {
+          const { pendingSudoCommands } = await import("../tools/registry.js");
+          const list = pendingSudoCommands();
+          if (!list.length) {
+            pushSystem("No commands are waiting for sudo permission.");
+            break;
+          }
+          pushSystem(
+            `${list.length} command(s) need your password — run them yourself:\n` +
+              list.map((p) => `  $ ${p.command}`).join("\n"),
+          );
+          break;
+        }
         case "unlock":
           unlockSession();
           setStatus("unlocked · no more approvals this session");
