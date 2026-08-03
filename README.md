@@ -6,12 +6,13 @@
 
 <br/>
 
-`TypeScript` · `Node 22+` · `Ink TUI`
+`TypeScript` · `Node 22+` · `Ink TUI` · `SQLite` · `MIT License`
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node](https://img.shields.io/badge/node-%3E%3D22-339933?logo=node.js&logoColor=white)](package.json)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/amirmahdibz2007-cpu/anique/pulls)
+[![Built with Ink](https://img.shields.io/badge/UI-Ink%20TUI-61DAFB?logo=react&logoColor=white)](https://github.com/vadimdemedes/ink)
 
 </div>
 
@@ -32,12 +33,19 @@
 
 ## ✨ Highlights
 
-- **Agent loop with tools** — file read/write, patch, grep/glob, bash, git, memory, skills, todos — plus a plan-before-act rhythm.
-- **Lenses** — swap domain expertise with one keypress (`/code`, `/write`, `/teach`, …).
-- **Deep missions** — auto-plan → execute → verify → repair → synthesize for hard tasks.
-- **Cheap by design** — automatic long-history compaction so tokens stay low and sessions never overflow.
-- **Safety gates** — risk-classified approvals (`safe` / `workspace_write` / `dangerous`), session-wide allow, allowlists, undo + version vault.
-- **Multi-provider** — OpenRouter, OpenAI, Ollama, or any OpenAI-compatible endpoint.
+| Feature | Description |
+|---------|-------------|
+| **Agent loop with tools** | File read/write, patch, grep/glob, bash, git, memory, skills, todos — plus a plan-before-act rhythm |
+| **Lenses** | Swap domain expertise with one keypress (`/code`, `/write`, `/teach`, …) |
+| **Deep missions** | Auto-plan → execute → verify → repair → synthesize for hard tasks |
+| **Cheap by design** | Automatic long-history compaction so tokens stay low and sessions never overflow |
+| **Safety gates** | Risk-classified approvals (`safe` / `workspace_write` / `dangerous`), session-wide allow, allowlists, undo + version vault |
+| **Multi-provider** | OpenRouter, OpenAI, Ollama, or any OpenAI-compatible endpoint |
+| **Bilingual UI** | English / Persian replies (`/fa`, `/en`) — UI stays English |
+| **Profiles** | Isolated agent homes (`anique profile create coder`) — configs, skills, memory per profile |
+| **Mission theater** | Live timeline of tool calls, approvals, and agent reasoning |
+
+---
 
 ## 📦 Install
 
@@ -55,62 +63,837 @@ anique doctor    # sanity check
 anique           # open the TUI
 ```
 
+### Quick start (one-liner)
+
+```bash
+npx anique@latest setup && anique
+```
+
+---
+
 ## 🧭 Lenses
 
-| Lens      | Use it for                                        | Commands        |
-|-----------|---------------------------------------------------|-----------------|
-| `code`    | Repos, edits, tests, git                          | `/code`         |
-| `write`   | Essays, docs, journalism, scripts                 | `/write`        |
-| `teach`   | Lessons, drills, quizzes                          | `/teach`        |
-| `market`  | Growth, copy, funnels, calendars                  | `/market`       |
-| `bot`     | Chatbot / Telegram / agent debugging              | `/bot`          |
-| `system`  | Dotfiles & services (high-friction approvals)     | `/system`       |
-| `evolve`  | Improve Anique's own code & prompts               | `/evolve`       |
-| `daily`   | Daily planning & review                           | `/daily`        |
+| Lens | Title | Use it for | Switch command |
+|------|-------|------------|----------------|
+| `code` | **Code** | Repos, edits, tests, git, debug | `/code` |
+| `write` | **Write** | Essays, docs, journalism, scripts | `/write` |
+| `teach` | **Teach** | Lessons, drills, quizzes, explanations | `/teach` |
+| `market` | **Market** | Growth, copy, funnels, calendars | `/market` |
+| `bot` | **Bot** | Chatbot / Telegram / agent debugging | `/bot` |
+| `system` | **System** | Dotfiles & services (high-friction approvals) | `/system` |
+| `evolve` | **Evolve** | Improve Anique's own code & prompts | `/evolve` |
+| `daily` | **Daily** | Quick everyday tasks, drafts, checklists | `/daily` |
+| `atelier` | **Atelier** | Private deep-coding lens (owner-only) | `/atelier` |
 
-My personal taste lives in **`~/.anique/USER.md`** — edit it or run `anique setup`.
+> **My personal taste** lives in **`~/.anique/USER.md`** — edit it or run `anique setup`.
 
-## ⚡ Quick usage
+### Lens details
+
+<details>
+<summary><b>code</b> — Repository work: edit, test, git, debug</summary>
+
+Tools: `read_file`, `write_file`, `apply_patch`, `grep`, `glob`, `bash`, `git_status`, `git_diff`, `git_commit`, `run_tests`, `project_ingest`, plus memory/skills/todos/recall/web_search.
+
+Best for: refactoring, bug fixes, writing tests, exploring codebases, git workflows.
+</details>
+
+<details>
+<summary><b>write</b> — Journalism / magazine voice, structure, editing</summary>
+
+Tools: common + `list_templates`, `read_template`.
+
+Templates: `article.md`, `campaign.md`, `lesson.md`.
+
+Best for: articles, documentation, newsletters, scripts, editing passes.
+</details>
+
+<details>
+<summary><b>teach</b> — Explanations, learning paths, drills, quizzes</summary>
+
+Tools: common + `list_templates`, `read_template`.
+
+Template: `lesson.md` (intuition → precise idea → worked example → practice → mini-quiz).
+
+Best for: learning new topics, creating study materials, tutoring.
+</details>
+
+<details>
+<summary><b>market</b> — Bot growth: copy, funnels, content calendar</summary>
+
+Tools: common + `list_templates`, `read_template`.
+
+Template: `campaign.md`.
+
+Best for: launch copy, A/B variants, content calendars, funnel maps.
+</details>
+
+<details>
+<summary><b>bot</b> — Debug and improve your bot from logs and code</summary>
+
+Tools: common + `read_log`, `git_status`, `git_diff`, `run_tests`.
+
+Best for: Telegram/Discord bot debugging, handler fixes, flow design.
+</details>
+
+<details>
+<summary><b>system</b> — Rice, configs, services — high-friction approvals</summary>
+
+Tools: common tools only (no git_commit, no run_tests by default).
+
+Best for: dotfiles, systemd services, package configs, reversible changes.
+</details>
+
+<details>
+<summary><b>evolve</b> — Self-upgrade: read/change Anique's own code, lenses, UX</summary>
+
+Tools: common + `git_status`, `git_diff`, `git_commit`, `run_tests`, `rebuild_anique`.
+
+Workspace locks to Anique source. After changes: `rebuild_anique` → restart.
+</details>
+
+<details>
+<summary><b>daily</b> — Light everyday assistant for simple, routine tasks</summary>
+
+Tools: read/write/grep/glob/bash + memory/skills/todos/recall.
+
+Best for: quick answers, drafts, checklists, translations, small lookups.
+</details>
+
+<details>
+<summary><b>atelier</b> — Private deep-coding lens (not public default)</summary>
+
+Activated via `/atelier` or `/ingest`. Learns your repo permanently into `~/.anique/private/`.
+
+Best for: deep work on your own projects, durable project memory.
+</details>
+
+---
+
+## ⚡ Quick Usage
+
+### Interactive modes
 
 ```bash
 anique                              # TUI (default)
 anique tui -l write                 # TUI in write lens
-anique ask -l code "why is CI red?" # one-shot
-anique mission -l bot "…"           # live theater timeline
-anique resume                       # resume last session in TUI
-anique export                       # export session to markdown
-anique evolve --plan "…"            # self-improvement pass
-anique lenses-reset                 # restore shipped lenses
+anique repl --classic               # Plain readline REPL
+anique repl -l code --plan          # REPL in plan rhythm
 ```
 
-### Providers
+### One-shot commands
 
 ```bash
-anique config set provider openrouter
-anique config set provider openai
-anique config set provider ollama
-anique config set model llama3.2
+anique ask -l code "why is CI red?"           # one-shot question
+anique mission -l bot "refactor auth"        # live theater timeline
+anique resume                                 # resume last session in TUI
+anique resume <session-id>                    # resume specific session
+anique export                                 # export latest session to markdown
+anique export <session-id>                    # export specific session
 ```
 
-## 🛡 Safety
+### Self-improvement
 
-- Dangerous shell commands and out-of-workspace writes always require confirmation.
-- Risk classes: `safe` → `workspace_write` → `dangerous`; allow them **once**, per-**session**, per-**workspace**, or **always**.
-- Every prior file version is saved before an edit — undo with `/undo`.
-- API keys live in `~/.anique/config.json` (mode `600`), never in the repo.
+```bash
+anique evolve --plan "add a new tool for X"   # self-improvement pass
+anique evolve                                 # open evolve TUI
+anique lenses-reset                           # restore shipped lenses
+```
 
-## 🧑💻 Development
+### Provider / Model config
+
+```bash
+anique models                                 # interactive wizard (Hermes-style)
+anique models <model-id>                      # quick-switch model
+anique models +                               # add another provider
+anique models --list                          # list models from current provider
+anique config set provider openrouter
+anique config set provider ollama
+anique config set model llama3.2
+anique config show                            # show config (API key masked)
+```
+
+### Profiles (isolated homes)
+
+```bash
+anique profile list                           # list profiles
+anique profile create coder --clone           # new profile, clone from default
+anique profile use coder                      # set default profile
+anique -p coder repl                          # run with specific profile
+anique profile delete coder --yes             # delete profile
+anique profile rename coder hacker            # rename profile
+```
+
+### Memory & Skills
+
+```bash
+anique memory                                 # show USER.md + MEMORY.md
+anique memory --set "new content"             # overwrite USER.md
+anique memory memory --set "note"             # append to MEMORY.md
+anique skills                                 # list skills for current lens
+anique skills code                            # list skills for code lens
+anique skill-save code "my-skill" "content"   # save a skill
+```
+
+### Session management
+
+```bash
+anique sessions                               # list recent sessions
+anique trace                                  # replay latest mission trace
+anique trace <session-id>                     # replay specific trace
+anique recall "auth bug"                      # search past sessions
+```
+
+### Config
+
+```bash
+anique config show                            # show all config (key masked)
+anique config set approvalMode suggest        # suggest | allowlist | auto
+anique config set maxSteps 60
+anique config set ui tui                      # tui | classic
+anique config set locale fa                   # en | fa (reply language)
+```
+
+### Workspace init
+
+```bash
+anique init-workspace                         # write starter ANIQUE.md
+```
+
+---
+
+## 🎮 Slash Commands (inside TUI / REPL)
+
+| Command | Description |
+|---------|-------------|
+| `/help` | Show this help |
+| `/models` | Configure provider + API key + model |
+| `/models <id>` | Quick-switch model |
+| `/models +` | Add another provider / API key |
+| `/deep <prompt>` | Force quality path (clarify + plan + sequential tasks) |
+| `/fast <prompt>` | Skip deep — single-pass answer |
+| `/profile` | List agent profiles · `/profile use <name>` |
+| `/lens <name>` | Switch lens |
+| `/atelier` | Private deep-coding lens |
+| `/ingest [deep]` | Scan workspace into durable project memory |
+| `/plan` / `/act` | Rhythm: investigate vs execute |
+| `/cost` | Session token / $ estimate |
+| `/context` | Context window bar |
+| `/compact` | Summarize older history to free context |
+| `/todos` | Show mission todos |
+| `/undo` | Revert last agent file changes (git) |
+| `/permissions` | `suggest` \| `allowlist` \| `auto` |
+| `/trace` / `/sessions` / `/resume` / `/export` | Session tools |
+| `/skill save <name>` | Save last assistant reply as skill |
+| `/evolve` | Enter evolve mode (workspace locks to Anique source) |
+| `/learn` | Propose learnings from last mission (LearnCard) |
+| `/learn on\|off` | Sticky auto-learn after missions |
+| `/fa` / `/en` | Persian / English replies (UI stays English) |
+| `/compose` / `/send` | Edit `~/.anique/inbox.md` in GUI editor, then send |
+| `/private` | Owner careful profile (not public default) |
+| `/versions` | List prior file versions · `/rollback <id>` |
+| `/redo` | Resend last user message |
+| `/memory` | Show USER.md / MEMORY.md |
+| `/config` | Show current config |
+| `/clear` | Clear history |
+
+---
+
+## 🛡 Safety & Approvals
+
+Anique classifies every tool call by **risk level**:
+
+| Risk Level | Examples | Default Behavior |
+|------------|----------|------------------|
+| `safe` | `read_file`, `grep`, `glob`, `memory_read`, `recall`, `skill_load` | Auto-approved |
+| `workspace_write` | `write_file`, `apply_patch`, `bash` (non-destructive), `git_commit`, `run_tests` | Prompt once per session |
+| `dangerous` | `bash` with `sudo`, `rm -rf`, disk formatters, blind `curl \| sh` | Always prompt |
+
+### Approval modes (`anique config set approvalMode <mode>`)
+
+| Mode | Behavior |
+|------|----------|
+| `suggest` | Ask for each risky action (default) |
+| `allowlist` | Auto-approve safe bash prefixes (`git`, `npm`, `ls`, `cat`, …); prompt for others |
+| `auto` | No prompts — fully autonomous (use with caution) |
+
+### Safety features
+
+- **Session unlock**: First approval (`Enter`/`y`) unlocks the whole session for that risk class
+- **Workspace allow**: Persistent allowlist per workspace
+- **Undo + Version vault**: Every prior file version saved before edit — `/undo` or `/rollback <id>`
+- **API keys**: Stored in `~/.anique/config.json` (mode `600`), never in the repo
+- **Plan rhythm**: In `/plan`, `bash`, `git_commit`, `run_tests`, `rebuild_anique` are blocked
+
+---
+
+## 🔧 Development
 
 ```bash
 npm run typecheck   # TypeScript type-check
 npm run smoke       # offline sanity checks (9 lenses, safety, prompts)
 npm run e2e         # end-to-end approval behavior tests
 npm run build       # compile to dist/
-npm run anique -- … # run from source
+npm run anique -- … # run from source (tsx)
 ```
 
-Env: `ANIQUE_HOME`, `ANIQUE_SOURCE`.
+### Project structure
+
+```
+src/
+├── agent/          # Agent loop, deep missions, todos, undo, usage
+├── cli/            # Commands: setup, doctor, models, seed
+├── compose/        # Inbox (external editor → send)
+├── config/         # Config loading, provider presets, paths
+├── i18n/           # Persian terminal shaping
+├── learn/          # Evidence-gated learning, project memory, skills
+├── lenses/         # Lens registry, private lenses
+├── memory/         # USER.md / MEMORY.md file ops
+├── meta/           # Source root detection
+├── profiles/       # Isolated agent profiles (Hermes-style)
+├── providers/      # OpenAI-compatible streaming, model fetching
+├── safety/         # Approval gates, risk classification
+├── skills/         # Skill load/save per lens
+├── store/          # SQLite sessions, traces, recall
+├── theater/        # Mission theater timeline
+├── tools/          # Tool registry + 25+ tool handlers
+├── tui/            # Ink TUI components, theme, hooks
+└── versions/       # File version vault (undo/rollback)
+```
+
+### Environment variables
+
+| Variable | Purpose |
+|----------|---------|
+| `ANIQUE_HOME` | Override `~/.anique` data directory |
+| `ANIQUE_SOURCE` | Override Anique source root (for evolve) |
+
+---
+
+## 🌐 Providers
+
+| Provider | Base URL | Default Model | API Key Required |
+|----------|----------|---------------|------------------|
+| **OpenRouter** | `https://openrouter.ai/api/v1` | `anthropic/claude-sonnet-4` | Yes |
+| **OpenAI** | `https://api.openai.com/v1` | `gpt-4.1` | Yes |
+| **Anthropic** | `https://api.anthropic.com/v1` | `claude-sonnet-4-20250514` | Yes |
+| **Ollama** | `http://127.0.0.1:11434/v1` | `llama3.2` | No (local) |
+| **Custom** | Your `baseUrl` | Your choice | Optional |
+
+Configure via `anique models` or `anique config set provider <name>`.
+
+---
+
+## 📚 Templates
+
+Templates live in `~/.anique/templates/` (user) and `templates/` (shipped).
+
+| Template | Lens | Purpose |
+|----------|------|---------|
+| `article.md` | write | Journalism structure: lead, nut graf, sections, pull-quotes, TL;DR |
+| `campaign.md` | market | Growth campaign: hypothesis, copy variants, calendar, metrics |
+| `lesson.md` | teach | Lesson sheet: intuition, precise idea, worked example, practice, quiz |
+| `bot-incident.md` | bot | Incident report: symptoms, root cause, fix, verification checklist |
+
+Use `list_templates` / `read_template` tools or `/compose` to edit.
+
+---
+
+## 🧠 Learning System
+
+Anique learns from missions via **evidence-gated LearnCards**:
+
+1. After a mission with ≥4 tool calls, `/learn` proposes a skill
+2. Evidence pack: tool success rate, verification outcome, session summary
+3. If evidence is strong → skill saved to `~/.anique/skills/<lens>/`
+4. Next session: `skill_load` makes the approach reusable
+
+```bash
+/learn              # propose from last mission
+/learn on           # auto-propose after every mission
+/learn off          # disable auto-learn
+```
+
+---
+
+## 🎨 TUI Features
+
+- **Cursor-like layout**: Header (lens/rhythm/model), Feed (messages), Status bar (context %, tokens, approvals)
+- **Scrolling**: `↑/↓` line, `PgUp/PgDn` page, `Ctrl+↑/↓` / `Alt+↑/↓` fast scroll
+- **Markdown rendering**: Code blocks, tables, lists in terminal
+- **Live context bar**: Shows context window usage %
+- **Mission theater**: Timeline of tool calls, approvals, reasoning
+- **Theme**: Gold & black, configurable in `src/tui/theme.ts`
+
+---
 
 ## 📄 License
 
-[MIT](LICENSE)
+[MIT](LICENSE) — free for personal and commercial use.
+
+---
+
+## 🤝 Contributing
+
+PRs welcome! Please:
+
+1. Run `npm run typecheck` and `npm run smoke` before pushing
+2. Follow existing code style (small modules, explicit types)
+3. Update relevant lens markdown if behavior changes
+4. Add tests for new tools/commands
+
+---
+
+<div align="center">
+
+**Made with ❤️ for terminal dwellers who want a sharp, portable agent.**
+
+</div>
+
+---
+
+# ◆ Anique (فارسی)
+
+**یک عامل هوش مصنوعی چند دامنه در ترمینال** — یک TUI شبیه Cursor، یک CLI قابل حمل، و کلیدهای API شخصی. یک هسته. چندین لنز.
+
+<br/>
+
+`TypeScript` · `Node 22+` · `Ink TUI` · `SQLite` · `مجوز MIT`
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node](https://img.shields.io/badge/node-%3E%3D22-339933?logo=node.js&logoColor=white)](package.json)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/amirmahdibz2007-cpu/anique/pulls)
+[![Built with Ink](https://img.shields.io/badge/UI-Ink%20TUI-61DAFB?logo=react&logoColor=white)](https://github.com/vadimdemedes/ink)
+
+---
+
+**Anique** یک حلقه عامل (agent loop) تیز در ترمینال اجرا می‌کند. **لنزها** را عوض کنید تا تخصص دامنه تغییر کند — نوشتن، کدنویسی، تدریس، بازاریابی، ربات‌ها، سیستم‌ها — یا لنز **evolve** را انتخاب کنید تا Anique خودش را بهبود بخشد.
+
+```
+◆ ANIQUE  code · act · openrouter/anthropic/claude-sonnet-4
+┌─────────────────────────────────────────────┐
+│  ▸ you   fix the flaky auth test            │
+│  ⚙ grep   ⚙ apply_patch   ◆ anique …       │
+│  ▸ you   why is CI red?                     │
+│  ⚙ bash npm test   ◆ 3 tests fixed          │
+└─────────────────────────────────────────────┘
+› ask Anique…   ↑/↓ scroll · PgUp/PgDn
+```
+
+## ✨ ویژگی‌های برجسته
+
+| ویژگی | توضیح |
+|---------|-------|
+| **حلقه عامل با ابزارها** | خواندن/نوشتن فایل، پچ، grep/glob، bash، git، حافظه، مهارت‌ها، todoها — به علاوه ریتم plan-before-act |
+| **لنزها** | تغییر تخصص دامنه با یک فشردن کلید (`/code`، `/write`، `/teach`، …) |
+| **مهمان‌های عمیق** | برنامه‌ریزی خودکار → اجرا → تأیید → تعمیر → ترکیب برای کارهای سخت |
+| **ارزان به طراحی** | فشرده‌سازی خودکار تاریخچه طولانی تا توکن‌ها کم بمانند و جلسه‌ها هرگز پر نشوند |
+| **دروازه‌های ایمنی** | تأییدات طبقه‌بندی شده بر اساس ریسک (`safe` / `workspace_write` / `dangerous`)، اجازه کل جلسه، لیست‌های مجاز، undo + مخزن نسخه‌ها |
+| **چند ارائه‌دهنده** | OpenRouter، OpenAI، Ollama، یا هر نقطه پایانی سازگار OpenAI |
+| **رابط دو زبانه** | پاسخ‌های انگلیسی / فارسی (`/fa`، `/en`) — UI انگلیسی می‌ماند |
+| **پروفایل‌ها** | خانه‌های جدا شده عامل (`anique profile create coder`) — کانفیگ، مهارت‌ها، حافظه به ازای هر پروفایل |
+| **تئاتر مأموریت** | خط زمان زنده فراخوانی ابزارها، تأییدات، و استدلال عامل |
+
+---
+
+## 📦 نصب
+
+نیاز به **Node.js 22+** و `npm` دارد.
+
+```bash
+git clone https://github.com/amirmahdibz2007-cpu/anique.git
+cd anique
+npm install
+npm run build
+npm link
+
+anique setup     # انتخاب ارائه‌دهنده + مدل + ترجیحات شما
+anique doctor    # بررسی سلامت
+anique           # باز کردن TUI
+```
+
+### شروع سریع (یک خطی)
+
+```bash
+npx anique@latest setup && anique
+```
+
+---
+
+## 🧭 لنزها
+
+| لنز | عنوان | کاربرد | دستور تغییر |
+|------|-------|--------|-------------|
+| `code` | **Code** | مخازن، ویرایش، تست، git، دیباگ | `/code` |
+| `write` | **Write** | مقاله، مستندات، روزنامه‌نگاری، اسکریپت | `/write` |
+| `teach` | **Teach** | درس، تمرین، کویز، توضیح | `/teach` |
+| `market` | **Market** | رشد، کپی، قیف، تقویم | `/market` |
+| `bot` | **Bot** | دیباگ چت‌بات / تلگرام / عامل | `/bot` |
+| `system` | **System** | دات‌فایل‌ها و سرویس‌ها (تأییدات با اصطکاک بالا) | `/system` |
+| `evolve` | **Evolve** | بهبود کد و پرامپت‌های خود Anique | `/evolve` |
+| `daily` | **Daily** | کارهای روزمره سریع، پیش‌نویس، چک‌لیست | `/daily` |
+| `atelier` | **Atelier** | لنز کدنویسی عمیق خصوصی (فقط مالک) | `/atelier` |
+
+> **سلیقه شخصی من** در **`~/.anique/USER.md`** زندگی می‌کند — آن را ویرایش کنید یا `anique setup` را اجرا کنید.
+
+### جزئیات لنزها
+
+<details>
+<summary><b>code</b> — کار روی مخزن: ویرایش، تست، git، دیباگ</summary>
+
+ابزارها: `read_file`، `write_file`، `apply_patch`، `grep`، `glob`، `bash`، `git_status`، `git_diff`، `git_commit`، `run_tests`، `project_ingest`، به علاوه memory/skills/todos/recall/web_search.
+
+مناسب برای: ریفکتورینگ، رفع باگ، نوشتن تست، کاوش کدبیس، گردش کار git.
+</details>
+
+<details>
+<summary><b>write</b> — لحن روزنامه‌نگاری / مجله، ساختار، ویرایش</summary>
+
+ابزارها: عمومی + `list_templates`، `read_template`.
+
+قالب‌ها: `article.md`، `campaign.md`، `lesson.md`.
+
+مناسب برای: مقاله‌ها، مستندات، خبرنامه‌ها، اسکریپت‌ها، پاس‌های ویرایش.
+</details>
+
+<details>
+<summary><b>teach</b> — توضیح، مسیر یادگیری، تمرین، کویز</summary>
+
+ابزارها: عمومی + `list_templates`، `read_template`.
+
+قالب: `lesson.md` (شهود → ایده دقیق → مثال حل شده → تمرین → مینی‌کوییز).
+
+مناسب برای: یادگیری موضوعات جدید، ایجاد مواد آموزشی، تدریس خصوصی.
+</details>
+
+<details>
+<summary><b>market</b> — رشد بات: کپی، قیف، تقویم محتوا</summary>
+
+ابزارها: عمومی + `list_templates`، `read_template`.
+
+قالب: `campaign.md`.
+
+مناسب برای: کپی راه‌اندازی، متغیرهای A/B، تقویم محتوا، نقشه قیف.
+</details>
+
+<details>
+<summary><b>bot</b> — دیباگ و بهبود بات از لاگ‌ها و کد</summary>
+
+ابزارها: عمومی + `read_log`، `git_status`، `git_diff`، `run_tests`.
+
+مناسب برای: دیباگ بات تلگرام/دیسکورد، رفع هندلرها، طراحی جریان.
+</details>
+
+<details>
+<summary><b>system</b> — رایس، کانفیگ‌ها، سرویس‌ها — تأییدات با اصطکاک بالا</summary>
+
+ابزارها: فقط ابزارهای عمومی (به طور پیش‌فرض git_commit، run_tests ندارند).
+
+مناسب برای: دات‌فایل‌ها، سرویس‌های systemd، کانفیگ پکیج‌ها، تغییرات قابل بازگشت.
+</details>
+
+<details>
+<summary><b>evolve</b> — ارتقای خود: خواندن/تغییر کد، لنزها، UX خود Anique</summary>
+
+ابزارها: عمومی + `git_status`، `git_diff`، `git_commit`، `run_tests`، `rebuild_anique`.
+
+فضای کار روی کد منبع Anique قفل می‌شود. بعد از تغییرات: `rebuild_anique` → ریستارت.
+</details>
+
+<details>
+<summary><b>daily</b> — دستیار روزمره سبک برای کارهای ساده روتین</summary>
+
+ابزارها: read/write/grep/glob/bash + memory/skills/todos/recall.
+
+مناسب برای: پاسخ‌های سریع، پیش‌نویس‌ها، چک‌لیست‌ها، ترجمه، جستجوی کوچک.
+</details>
+
+<details>
+<summary><b>atelier</b> — لنز کدنویسی عمیق خصوصی (پیش‌فرض عمومی نیست)</summary>
+
+فعال می‌شود از طریق `/atelier` یا `/ingest`. مخزن شما را به طور دائم در `~/.anique/private/` یاد می‌گیرد.
+
+مناسب برای: کار عمیق روی پروژه‌های خودتان، حافظه پروژه ماندگار.
+</details>
+
+---
+
+## ⚡ استفاده سریع
+
+### حالت‌های تعاملی
+
+```bash
+anique                              # TUI (پیش‌فرض)
+anique tui -l write                 # TUI در لنز write
+anique repl --classic               # REPL ساده readline
+anique repl -l code --plan          # REPL در ریتم plan
+```
+
+### دستورات تک‌خطی
+
+```bash
+anique ask -l code "why is CI red?"           # سوال تک‌خطی
+anique mission -l bot "refactor auth"         # خط زمان تئاتر زنده
+anique resume                                 # ادامه آخرین جلسه در TUI
+anique resume <session-id>                    # ادامه جلسه خاص
+anique export                                 # صادرات آخرین جلسه به markdown
+anique export <session-id>                    # صادرات جلسه خاص
+```
+
+### ارتقای خود
+
+```bash
+anique evolve --plan "add a new tool for X"   # پاس ارتقای خود
+anique evolve                                 # باز کردن TUI evolve
+anique lenses-reset                           # بازیابی لنزهای ارسال شده
+```
+
+### کانفیگ ارائه‌دهنده / مدل
+
+```bash
+anique models                                 # جادوگر تعاملی (سبک Hermes)
+anique models <model-id>                      # تغییر سریع مدل
+anique models +                               # افزودن ارائه‌دهنده دیگر
+anique models --list                          # لیست مدل‌های ارائه‌دهنده فعلی
+anique config set provider openrouter
+anique config set provider ollama
+anique config set model llama3.2
+anique config show                            # نمایش کانفیگ (کلید API ماسک شده)
+```
+
+### پروفایل‌ها (خانه‌های جدا شده)
+
+```bash
+anique profile list                           # لیست پروفایل‌ها
+anique profile create coder --clone           # پروفایل جدید، کپی از پیش‌فرض
+anique profile use coder                      # تنظیم پروفایل پیش‌فرض
+anique -p coder repl                          # اجرا با پروفایل خاص
+anique profile delete coder --yes             # حذف پروفایل
+anique profile rename coder hacker            # تغییر نام پروفایل
+```
+
+### حافظه و مهارت‌ها
+
+```bash
+anique memory                                 # نمایش USER.md + MEMORY.md
+anique memory --set "new content"             # بازنویسی USER.md
+anique memory memory --set "note"             # الحاق به MEMORY.md
+anique skills                                 # لیست مهارت‌ها برای لنز فعلی
+anique skills code                            # لیست مهارت‌ها برای لنز code
+anique skill-save code "my-skill" "content"   # ذخیره مهارت
+```
+
+### مدیریت جلسه
+
+```bash
+anique sessions                               # لیست جلسات اخیر
+anique trace                                  # پخش مجدد خط زمان مأموریت
+anique trace <session-id>                     # پخش مجدد خط زمان خاص
+anique recall "auth bug"                      # جستجو در جلسات گذشته
+```
+
+### کانفیگ
+
+```bash
+anique config show                            # نمایش کل کانفیگ (کلید ماسک شده)
+anique config set approvalMode suggest        # suggest | allowlist | auto
+anique config set maxSteps 60
+anique config set ui tui                      # tui | classic
+anique config set locale fa                   # en | fa (زبان پاسخ)
+```
+
+### راه‌اندازی فضای کار
+
+```bash
+anique init-workspace                         # نوشتن ANIQUE.md استارت
+```
+
+---
+
+## 🎮 دستورات اسلش (درون TUI / REPL)
+
+| دستور | توضیح |
+|---------|-------------|
+| `/help` | نمایش این راهنما |
+| `/models` | کانفیگ ارائه‌دهنده + کلید API + مدل |
+| `/models <id>` | تغییر سریع مدل |
+| `/models +` | افزودن ارائه‌دهنده / کلید API دیگر |
+| `/deep <prompt>` | اجبار مسیر کیفیت (توضیح + برنامه + وظایف ترتیبی) |
+| `/fast <prompt>` | رد کردن deep — پاسخ تک‌پاس |
+| `/profile` | لیست پروفایل‌های عامل · `/profile use <name>` |
+| `/lens <name>` | تغییر لنز |
+| `/atelier` | لنز کدنویسی عمیق خصوصی |
+| `/ingest [deep]` | اسکن فضای کار به حافظه پروژه ماندگار |
+| `/plan` / `/act` | ریتم: کاوش در برابر اجرا |
+| `/cost` | تخمین توکن / $ جلسه |
+| `/context` | نوار پنجره متن |
+| `/compact` | خلاصه‌سازی تاریخچه قدیمی برای آزاد کردن متن |
+| `/todos` | نمایش todoهای مأموریت |
+| `/undo` | برگرداندن آخرین تغییرات فایل عامل (git) |
+| `/permissions` | `suggest` \| `allowlist` \| `auto` |
+| `/trace` / `/sessions` / `/resume` / `/export` | ابزارهای جلسه |
+| `/skill save <name>` | ذخیره آخرین پاسخ عامل به عنوان مهارت |
+| `/evolve` | ورود به حالت evolve (فضای کار روی منبع Anique قفل می‌شود) |
+| `/learn` | پیشنهاد یادگیری از آخرین مأموریت (LearnCard) |
+| `/learn on\|off` | یادگیری خودکار چسبنده بعد از مأموریت‌ها |
+| `/fa` / `/en` | پاسخ‌های فارسی / انگلیسی (UI انگلیسی می‌ماند) |
+| `/compose` / `/send` | ویرایش `~/.anique/inbox.md` در ویرایشگر GUI، سپس ارسال |
+| `/private` | پروفایل مراقبتی مالک (پیش‌فرض عمومی نیست) |
+| `/versions` | لیست نسخه‌های قبلی فایل · `/rollback <id>` |
+| `/redo` | ارسال مجدد آخرین پیام کاربر |
+| `/memory` | نمایش USER.md / MEMORY.md |
+| `/config` | نمایش کانفیگ فعلی |
+| `/clear` | پاک کردن تاریخچه |
+
+---
+
+## 🛡 ایمنی و تأییدات
+
+Anique هر فراخوانی ابزار را بر اساس **سطح ریسک** طبقه‌بندی می‌کند:
+
+| سطح ریسک | مثال‌ها | رفتار پیش‌فرض |
+|-----------|---------|----------------|
+| `safe` | `read_file`، `grep`، `glob`، `memory_read`، `recall`، `skill_load` | تأیید خودکار |
+| `workspace_write` | `write_file`، `apply_patch`، `bash` (غیرمخرب)، `git_commit`، `run_tests` | پرامپت یک بار در جلسه |
+| `dangerous` | `bash` با `sudo`، `rm -rf`، فرمت‌دهنده دیسک، `curl \| sh` کور | همیشه پرامپت |
+
+### حالت‌های تأیید (`anique config set approvalMode <mode>`)
+
+| حالت | رفتار |
+|------|--------|
+| `suggest` | برای هر اقدام ریسک‌دار بپرس (پیش‌فرض) |
+| `allowlist` | پیشوندهای bash امن (`git`، `npm`، `ls`، `cat`، …) خودتأیید؛ بقیه پرامپت |
+| `auto` | بدون پرامپت — کاملاً خودمختار (با احتیاط استفاده کنید) |
+
+### ویژگی‌های ایمنی
+
+- **باز کردن جلسه**: اولین تأیید (`Enter`/`y`) کل جلسه را برای آن کلاس ریسک باز می‌کند
+- **مجاز فضای کار**: لیست مجاز ماندگار به ازای هر فضای کار
+- **Undo + مخزن نسخه**: هر نسخه قبلی فایل قبل از ویرایش ذخیره می‌شود — `/undo` یا `/rollback <id>`
+- **کلیدهای API**: در `~/.anique/config.json` (حالت `600`) ذخیره می‌شوند، هرگز در مخزن نیستند
+- **ریتم plan**: در `/plan`، `bash`، `git_commit`، `run_tests`، `rebuild_anique` مسدود هستند
+
+---
+
+## 🔧 توسعه
+
+```bash
+npm run typecheck   # بررسی نوع TypeScript
+npm run smoke       # بررسی‌های آفلاین (9 لنز، ایمنی، پرامپت‌ها)
+npm run e2e         # تست‌های end-to-end رفتار تأیید
+npm run build       # کامپایل به dist/
+npm run anique -- … # اجرا از منبع (tsx)
+```
+
+### ساختار پروژه
+
+```
+src/
+├── agent/          # حلقه عامل، مأموریت‌های عمیق، todoها، undo، usage
+├── cli/            # دستورات: setup، doctor، models، seed
+├── compose/        # Inbox (ویرایشگر خارجی → ارسال)
+├── config/         # بارگذاری کانفیگ، پیش‌فرض‌های ارائه‌دهنده، مسیرها
+├── i18n/           # شکل‌دهی فارسی ترمینال
+├── learn/          # یادگیری گیت‌شده با شواهد، حافظه پروژه، مهارت‌ها
+├── lenses/         # رجیستری لنز، لنزهای خصوصی
+├── memory/         # عملیات فایل USER.md / MEMORY.md
+├── meta/           # تشخیص ریشه منبع
+├── profiles/       # پروفایل‌های جدا شده عامل (سبک Hermes)
+├── providers/      # استریمینگ سازگار OpenAI، واکشی مدل
+├── safety/         # دروازه‌های تأیید، طبقه‌بندی ریسک
+├── skills/         # بارگذاری/ذخیره مهارت به ازای هر لنز
+├── store/          # جلسات SQLite، خط زمان‌ها، recall
+├── theater/        # تئاتر مأموریت خط زمان
+├── tools/          # رجیستری ابزار + ۲۵+ هندلر ابزار
+├── tui/            # کامپوننت‌های Ink TUI، تم، هوک‌ها
+└── versions/       # مخزن نسخه فایل (undo/rollback)
+```
+
+### متغیرهای محیطی
+
+| متغیر | هدف |
+|--------|------|
+| `ANIQUE_HOME` | لغو `~/.anique` دایرکتوری داده |
+| `ANIQUE_SOURCE` | لغو ریشه منبع Anique (برای evolve) |
+
+---
+
+## 🌐 ارائه‌دهندگان
+
+| ارائه‌دهنده | Base URL | مدل پیش‌فرض | نیاز به کلید API |
+|------------|----------|--------------|------------------|
+| **OpenRouter** | `https://openrouter.ai/api/v1` | `anthropic/claude-sonnet-4` | بله |
+| **OpenAI** | `https://api.openai.com/v1` | `gpt-4.1` | بله |
+| **Anthropic** | `https://api.anthropic.com/v1` | `claude-sonnet-4-20250514` | بله |
+| **Ollama** | `http://127.0.0.1:11434/v1` | `llama3.2` | خیر (محلی) |
+| **Custom** | `baseUrl` شما | انتخاب شما | اختیاری |
+
+کانفیگ از طریق `anique models` یا `anique config set provider <name>`.
+
+---
+
+## 📚 قالب‌ها
+
+قالب‌ها در `~/.anique/templates/` (کاربر) و `templates/` (ارسال شده) زندگی می‌کنند.
+
+| قالب | لنز | هدف |
+|------|------|------|
+| `article.md` | write | ساختار روزنامه‌نگاری: lead، nut graf، بخش‌ها، pull-quotes، TL;DR |
+| `campaign.md` | market | کمپین رشد: فرضیه، متغیرهای کپی، تقویم، متریک‌ها |
+| `lesson.md` | teach | برگه درس: شهود، ایده دقیق، مثال حل شده، تمرین، کویز |
+| `bot-incident.md` | bot | گزارش حادثه: علائم، ریشه причина، رفع، چک‌لیست تأیید |
+
+استفاده از ابزارهای `list_templates` / `read_template` یا `/compose` برای ویرایش.
+
+---
+
+## 🧠 سیستم یادگیری
+
+Anique از مأموریت‌ها از طریق **LearnCardهای گیت‌شده با شواهد** یاد می‌گیرد:
+
+1. بعد از مأموریت با ≥۴ فراخوانی ابزار، `/learn` یک مهارت پیشنهاد می‌دهد
+2. بسته شواهد: نرخ موفقیت ابزار، نتیجه تأیید، خلاصه جلسه
+3. اگر شواهد قوی باشد → مهارت در `~/.anique/skills/<lens>/` ذخیره می‌شود
+4. جلسه بعد: `skill_load` رویکرد را قابل استفاده مجدد می‌کند
+
+```bash
+/learn              # پیشنهاد از آخرین مأموریت
+/learn on           # پیشنهاد خودکار بعد از هر مأموریت
+/learn off          # غیرفعال کردن یادگیری خودکار
+```
+
+---
+
+## 🎨 ویژگی‌های TUI
+
+- **چیدمان شبیه Cursor**: هدر (لنز/ریتم/مدل)، فید (پیام‌ها)، نوار وضعیت (٪ متن، توکن‌ها، تأییدات)
+- **اسکرول**: `↑/↓` خط، `PgUp/PgDn` صفحه، `Ctrl+↑/↓` / `Alt+↑/↓` اسکرول سریع
+- **رندر مارک‌داون**: بلوک‌های کد، جداول، لیست‌ها در ترمینال
+- **نوار متن زنده**: نمایش درصد استفاده از پنجره متن
+- **تئاتر مأموریت**: خط زمان فراخوانی ابزارها، تأییدات، استدلال
+- **تم**: طلا و مشکی، قابل کانفیگ در `src/tui/theme.ts`
+
+---
+
+## 📄 مجوز
+
+[MIT](LICENSE) — رایگان برای استفاده شخصی و تجاری.
+
+---
+
+## 🤝 مشارکت
+
+PRها خوش‌آمدند! لطفاً:
+
+1. قبل از push، `npm run typecheck` و `npm run smoke` را اجرا کنید
+2. سبک کد موجود را دنبال کنید (ماژول‌های کوچک، تایپ‌های صریح)
+3. مارک‌داون لنز مربوطه را اگر رفتار تغییر کرد به‌روزرسانی کنید
+4. برای ابزار/دستور جدید تست اضافه کنید
+
+---
+
+<div align="center">
+
+**با ❤️ برای ساکنان ترمینال که یک عامل تیز، قابل حمل می‌خواهند ساخته شده.**
+
+</div>
