@@ -29,6 +29,11 @@ export function ApprovalModal(props: {
       props.onDecide("always");
       return;
     }
+    // u = fully trusted session: run every command without asking again
+    if (input === "u" || input === "U") {
+      props.onDecide("unlock");
+      return;
+    }
     if (input === "n" || input === "N" || key.escape) {
       props.onDecide("deny");
     }
@@ -92,6 +97,9 @@ export function ApprovalModal(props: {
       </Text>
       <Text dimColor>
         [a] always — save bash prefix to allowlist
+      </Text>
+      <Text bold color="green">
+        [u] unlock — allow EVERY command for this session (no more prompts)
       </Text>
       <Text dimColor>
         [n] deny — Esc also denies

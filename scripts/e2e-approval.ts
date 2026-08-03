@@ -75,4 +75,38 @@ setApprovalHandler(null);
 console.log("workspace mode — asks total:", wsAsked, "(expect 1)");
 const ok2 = c1.ok && c2.ok && c3.ok && wsAsked === 1;
 console.log(ok2 ? "E2E workspace OK" : "E2E workspace FAIL");
-process.exit(ok && ok2 ? 0 : 1);
+
+// Now verify the "unlock" decision allows EVERYTHING (incl. dangerous bash).
+let unlockAsked = 0;
+setApprovalHandler(async () => {
+  unlockAsked += 1;
+  return "unlock" as ApprovalDecision;
+});
+const ws3 = "/tmp/anique-e2e/ws3";
+mkdirSync(ws3, { recursive: true });
+const ctx3: ToolContext = {
+  workspace: ws3,
+  lens: "atelier",
+  approvalMode: "suggest",
+  rhythm: "act",
+  onApproval: () => {},
+};
+// first action grants the unlock (asks once)
+const d1 = await runTool(
+  "write_file",
+  JSON.stringify({ path: "z.ts", content: "z" }),
+  ctx3,
+);
+// after unlock: dangerous bash + more writes must NOT ask
+const d2 = await runTool("bash", JSON.stringify({ command: "rm -rf /tmp/anique-e2e-unlock-test" }), ctx3);
+const d3 = await runTool("write_file", JSON.stringify({ path: "w.ts", content: "w" }), ctx3);
+const d4 = await runTool(
+  "apply_patch",
+  JSON.stringify({ path: "z.ts", old_text: "z", new_text: "zz" }),
+  ctx3,
+);
+setApprovalHandler(null);
+console.log("unlock mode — asks total:", unlockAsked, "(expect 1)");
+const ok3 = d1.ok && d2.ok && d3.ok && d4.ok && unlockAsked === 1;
+console.log(ok3 ? "E2E unlock OK" : "E2E unlock FAIL");
+process.exit(ok && ok2 && ok3 ? 0 : 1);

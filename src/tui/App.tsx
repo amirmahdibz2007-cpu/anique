@@ -39,6 +39,9 @@ import {
   clearSessionAllows,
   sessionAllowCount,
   setApprovalHandler,
+  unlockSession,
+  lockSession,
+  isSessionUnlocked,
   type ApprovalDecision,
   type ApprovalRequest,
 } from "../safety/approval.js";
@@ -1099,7 +1102,18 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
           setHistory([]);
           setSessionId(undefined);
           clearSessionAllows();
+          lockSession();
           pushSystem("cleared");
+          break;
+        case "unlock":
+          unlockSession();
+          setStatus("unlocked · no more approvals this session");
+          pushSystem("🔓 session unlocked — every command runs without asking. /lock to re-enable.");
+          break;
+        case "lock":
+          lockSession();
+          setStatus("locked · approvals on again");
+          pushSystem("🔒 session locked — approvals re-enabled. /unlock to trust the session.");
           break;
         case "config": {
           const c = loadConfig();

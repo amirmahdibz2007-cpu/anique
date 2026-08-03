@@ -6,7 +6,7 @@ const DANGEROUS_BASH =
   /\b(rm\s+|sudo\b|chmod\b|chown\b|mkfs\b|dd\b|shutdown\b|reboot\b|systemctl\b|userdel\b|passwd\b|>\s*\/|curl\s+[^\n]*\|\s*(ba)?sh)/i;
 
 export type RiskLevel = "safe" | "workspace_write" | "dangerous";
-export type ApprovalDecision = "once" | "session" | "workspace" | "always" | "deny";
+export type ApprovalDecision = "once" | "session" | "workspace" | "always" | "unlock" | "deny";
 
 export function classifyBash(command: string): RiskLevel {
   if (DANGEROUS_BASH.test(command)) return "dangerous";
@@ -89,6 +89,24 @@ export function clearWorkspaceWriteAllow(): void {
   sessionAllows.delete(WORKSPACE_ALLOW_KEY);
 }
 
+/**
+ * Trusted-session unlock: when granted, every action (safe, workspace_write,
+ * and dangerous) is allowed for the rest of the process/session without asking.
+ */
+const UNLOCK_KEY = "__anique_unlock_all__";
+
+export function isSessionUnlocked(): boolean {
+  return sessionAllows.has(UNLOCK_KEY);
+}
+
+export function unlockSession(): void {
+  sessionAllows.set(UNLOCK_KEY, true);
+}
+
+export function lockSession(): void {
+  sessionAllows.delete(UNLOCK_KEY);
+}
+
 export interface ApprovalRequest {
   prompt: string;
   risk?: RiskLevel;
@@ -127,9 +145,7 @@ export async function askApprovalDecision(
     req.prompt,
     req.risk ? `  risk=${req.risk}` : "",
     req.preview ? `  preview: ${req.preview.slice(0, 120)}` : "",
-    req.risk === "workspace_write"
-      ? "  [Enter]this [space]all workspace writes [a]always [n]deny › "
-      : "  [y]once [s]session [a]always [n]deny › ",
+    "  [y]once [s]session [a]always [u]unlock-all [n]deny › ",
   ].filter(Boolean);
   const answer = await new Promise<string>((resolve) => {
     rl.question(lines.join("\n"), resolve);
@@ -138,6 +154,7 @@ export async function askApprovalDecision(
   const a = answer.trim().toLowerCase();
   if (a === "s" || a === "session") return "session";
   if (a === "a" || a === "always") return "always";
+  if (a === "u" || a === "unlock") return "unlock";
   if (req.risk === "workspace_write" && (a === " " || a === "" || a === "w" || a === "all")) {
     return "workspace";
   }
@@ -156,6 +173,12 @@ export function applyApprovalDecision(
   opts: { sessionKey: string; alwaysPrefix?: string },
 ): boolean {
   if (decision === "deny") return false;
+  if (decision === "unlock") {
+    // Fully trusted session: allow every action (incl. dangerous) for the
+    // rest of the session without asking again.
+    unlockSession();
+    return true;
+  }
   if (decision === "workspace") {
     // Allow this exact action now + every workspace_write for the session.
     grantSessionAllow(opts.sessionKey);

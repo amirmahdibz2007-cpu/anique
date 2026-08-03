@@ -17,6 +17,7 @@ import {
   classifyWrite,
   hasSessionAllow,
   hasWorkspaceWriteAllow,
+  isSessionUnlocked,
   needsApproval,
   sessionAllowKey,
   type RiskLevel,
@@ -70,6 +71,7 @@ async function gate(
 ): Promise<boolean> {
   const sessionKey = sessionAllowKey(risk, description);
   if (hasSessionAllow(sessionKey)) return true;
+  if (isSessionUnlocked()) return true; // trusted session — no more prompts
   if (risk === "workspace_write" && hasWorkspaceWriteAllow()) return true;
 
   if (
