@@ -12,8 +12,9 @@ export function ApprovalModal(props: {
   onDecide: (d: ApprovalDecision) => void;
 }): React.ReactElement {
   useInput((input, key) => {
+    // Enter / y = unlock the whole session (run everything without asking).
     if (key.return || input === "y" || input === "Y") {
-      props.onDecide("once");
+      props.onDecide("unlock");
       return;
     }
     // Space = allow every workspace write for this session (workspace_write only)
@@ -27,11 +28,6 @@ export function ApprovalModal(props: {
     }
     if (input === "a" || input === "A") {
       props.onDecide("always");
-      return;
-    }
-    // u = fully trusted session: run every command without asking again
-    if (input === "u" || input === "U") {
-      props.onDecide("unlock");
       return;
     }
     if (input === "n" || input === "N" || key.escape) {
@@ -85,19 +81,16 @@ export function ApprovalModal(props: {
         </Box>
       ) : null}
       <Text bold color="green">
-        [u] unlock — run EVERY command freely for this session (recommended)
+        [Enter] unlock — run EVERY command freely for this session
       </Text>
       <Text dimColor>
-        [y] once — this action only
+        [s] session — allow similar until /clear
       </Text>
       {props.risk === "workspace_write" ? (
         <Text color="yellow">
           [space] session — allow all workspace writes until /clear
         </Text>
       ) : null}
-      <Text dimColor>
-        [s] session — allow similar until /clear
-      </Text>
       <Text dimColor>
         [a] always — save bash prefix to allowlist
       </Text>

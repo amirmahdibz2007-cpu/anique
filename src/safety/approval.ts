@@ -199,20 +199,20 @@ export async function askApprovalDecision(
     req.prompt,
     req.risk ? `  risk=${req.risk}` : "",
     req.preview ? `  preview: ${req.preview.slice(0, 120)}` : "",
-    "  [y]once [s]session [a]always [u]unlock-all [n]deny › ",
+    "  [Enter]unlock-all [s]session [a]always [n]deny › ",
   ].filter(Boolean);
   const answer = await new Promise<string>((resolve) => {
     rl.question(lines.join("\n"), resolve);
   });
   rl.close();
   const a = answer.trim().toLowerCase();
+  // Default / y / yes = unlock the whole session (run everything freely).
+  if (!a || a === "y" || a === "yes" || a === "u" || a === "unlock") return "unlock";
   if (a === "s" || a === "session") return "session";
   if (a === "a" || a === "always") return "always";
-  if (a === "u" || a === "unlock") return "unlock";
   if (req.risk === "workspace_write" && (a === " " || a === "" || a === "w" || a === "all")) {
     return "workspace";
   }
-  if (a === "y" || a === "yes" || a === "once") return "once";
   return "deny";
 }
 
