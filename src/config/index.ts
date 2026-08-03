@@ -27,6 +27,8 @@ export interface AniqueConfig {
   learning: "on" | "off";
   /** Reply + chrome language; fa also uses cleaner terminal Persian shaping */
   locale: "en" | "fa";
+  /** Lean mode: aggressive token saving for the rest of the session */
+  leanMode: boolean;
 }
 
 export const PROVIDER_PRESETS: Record<
@@ -71,6 +73,7 @@ const DEFAULTS: AniqueConfig = {
   allowlistBash: ["git ", "npm ", "pnpm ", "yarn ", "node ", "npx ", "ls ", "cat ", "head ", "rg ", "grep ", "tsc", "pytest", "cargo "],
   learning: "on",
   locale: "en",
+  leanMode: false,
 };
 
 export function aniqueHome(): string {

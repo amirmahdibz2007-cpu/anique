@@ -76,6 +76,7 @@ async function maybeLearn(
   userMessage: string,
 ): Promise<void> {
   if (opts.skipLearning) return;
+  if (opts.config.leanMode) return;
   const pack: EvidencePack = {
     sessionId: result.sessionId,
     lens: opts.lensId,
@@ -358,22 +359,27 @@ async function runAgentPass(opts: AgentRunOptions): Promise<AgentRunResult> {
     workspace: opts.workspace,
     rhythm,
     locale: opts.config.locale,
+    leanMode: opts.config.leanMode,
   });
 
   // Token budget: automatically compress a long history before it overflows
   // the model context, so long sessions stay cheap and never break on a 429 /
   // context-limit error. Only kicks in past a soft cap.
+  // Lean mode: compact earlier (35%) and keep fewer tail messages.
+  const leanMode = opts.config.leanMode;
   let hist = opts.history ?? [];
-  if (hist.length > 8) {
+  const compactThreshold = leanMode ? 35 : 55;
+  const keepTail = leanMode ? 4 : 8;
+  if (hist.length > (leanMode ? 4 : 8)) {
     const probe = [
       { role: "system", content: system },
       ...hist.filter((m) => m.role !== "system"),
       { role: "user", content: opts.userMessage },
     ] as ChatMessage[];
     const { pct } = contextPct(probe, opts.config.model);
-    if (pct >= 55) {
+    if (pct >= compactThreshold) {
       const { messages: compactedMsgs, compacted: count, ok } =
-        await compactHistory(opts.config, hist, 8);
+        await compactHistory(opts.config, hist, keepTail);
       if (ok && count > 0) {
         hist = compactedMsgs;
         push("system", `history compacted · ${count} messages → summary`);
@@ -430,7 +436,8 @@ async function runAgentPass(opts: AgentRunOptions): Promise<AgentRunResult> {
       messages,
       tools: tools.length ? tools : undefined,
       tool_choice: tools.length ? "auto" : undefined,
-      temperature: 0.3,
+      temperature: leanMode ? 0.1 : 0.3,
+      ...(leanMode ? { max_tokens: 512 } : {}),
     });
 
     let result = await stream.next();
@@ -495,11 +502,17 @@ async function runAgentPass(opts: AgentRunOptions): Promise<AgentRunResult> {
     if (!calls.length) {
       const raw = (assistant.content ?? "").trim();
       const facing = userFacingAnswer(raw);
-      const bad = !raw || isMetaNarration(raw) || !facing;
+      const emptyOrMeta = !raw || isMetaNarration(raw) || !facing;
+      // Also retry if model used tools earlier but gave a uselessly short answer
+      const shortAfterTools = toolCallCount > 0 && raw.length < 50 && !facing;
+      const bad = emptyOrMeta || shortAfterTools;
 
       if (bad && !directRetryUsed && !aborted) {
         directRetryUsed = true;
-        push("system", "weak answer (narration/empty) — asking model again");
+        const reason = shortAfterTools
+          ? "short answer after tool use — asking for proper summary"
+          : "weak answer (narration/empty) — asking model again";
+        push("system", reason);
         messages.push({
           role: "user",
           content: RETRY_DIRECT_ANSWER,

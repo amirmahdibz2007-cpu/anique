@@ -89,6 +89,8 @@ ${chalk.bold("Slash commands")}
   /models +          Add another provider / API key
   /deep <prompt>     Force quality path (clarify + plan + sequential tasks)
   /fast <prompt>     Skip deep — single-pass answer
+  /lean              Toggle lean mode (extreme token saving for rest of session)
+  /lean off          Disable lean mode
   /profile           List agent profiles · /profile use <name>
   /lens <name>       Switch lens (${listLensIds().join(", ")})
   /atelier           Private deep-coding lens (not public)
@@ -1297,6 +1299,23 @@ async function runRepl(state: {
               sessionId = undefined;
               console.log(chalk.dim("History cleared."));
               break;
+            case "lean": {
+              const arg = (rest[0] || "").toLowerCase();
+              if (arg === "off") {
+                saveConfig({ leanMode: false });
+                console.log(chalk.cyan("lean mode OFF · normal token usage restored"));
+                break;
+              }
+              saveConfig({ leanMode: true });
+              console.log(
+                chalk.cyan(
+                  "lean mode ON · extreme token saving\n" +
+                  "• replies capped at 512 tokens • history compacts aggressively • learning skipped\n" +
+                  "/lean off to restore",
+                ),
+              );
+              break;
+            }
             default:
               console.log("Unknown command. /help");
           }

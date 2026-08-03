@@ -17,18 +17,14 @@ function shortTime(iso: string): string {
   }
 }
 
-/**
- * First screen on launch: continue a past chat or start new.
- */
 export function SessionPicker(props: {
   sessions: SessionRow[];
   width: number;
   onResume: (session: SessionRow) => void;
   onNew: () => void;
 }): React.ReactElement {
-  // cursor 0 = New chat; 1..n = sessions[i-1]
   const [cursor, setCursor] = useState(props.sessions.length > 0 ? 1 : 0);
-  const max = props.sessions.length; // inclusive: 0..max
+  const max = props.sessions.length;
 
   useInput((_input, key) => {
     if (key.upArrow) {
@@ -59,7 +55,6 @@ export function SessionPicker(props: {
   });
 
   const window = 12;
-  // map cursor to list index in display (0 = new, then sessions)
   const totalRows = 1 + props.sessions.length;
   const start = Math.max(
     0,
@@ -68,7 +63,6 @@ export function SessionPicker(props: {
 
   const rows: Array<{ key: string; index: number; label: React.ReactNode }> =
     [];
-  // New always at logical index 0
   for (let i = start; i < Math.min(totalRows, start + window); i++) {
     if (i === 0) {
       rows.push({
@@ -76,10 +70,9 @@ export function SessionPicker(props: {
         index: 0,
         label: (
           <Text>
-            <Text bold color={theme.goldBright}>
-              New chat
+            <Text bold color={theme.primaryBright}>
+              ✦ New chat
             </Text>
-            <Text dimColor> — start fresh</Text>
           </Text>
         ),
       });
@@ -90,9 +83,9 @@ export function SessionPicker(props: {
         index: i,
         label: (
           <Text>
-            <Text color={theme.gold}>{s.lens.padEnd(7)}</Text>
+            <Text color={theme.primary}>{s.lens.padEnd(7)}</Text>
             <Text> {s.title.slice(0, 42) || "(untitled)"}</Text>
-            <Text dimColor>
+            <Text color={theme.textDim}>
               {"  "}
               {shortTime(s.updated_at)}
             </Text>
@@ -111,21 +104,27 @@ export function SessionPicker(props: {
       width={props.width}
       height={Math.min(20, 6 + rows.length)}
     >
-      <Text bold color={theme.goldBright}>
-        ◆ Continue where you left off
+      <Text bold color={theme.primaryBright}>
+        ◈ continue or start fresh
       </Text>
-      <Text dimColor>
-        ↑↓ Enter · number · n = new
+      <Text color={theme.textDim}>
+        ↑↓ Enter · n = new · number = jump
       </Text>
       {props.sessions.length === 0 ? (
-        <Text dimColor>No past chats yet — pick New chat.</Text>
+        <Text color={theme.textDim}>no past chats yet</Text>
       ) : null}
       {rows.map((row) => {
         const active = row.index === cursor;
         return (
-          <Text key={row.key} color={active ? theme.goldBright : undefined} bold={active}>
-            {active ? "→" : " "}{" "}
-            {row.index === 0 ? "N" : String(row.index).padStart(2)}. {row.label}
+          <Text
+            key={row.key}
+            color={active ? theme.primaryBright : undefined}
+            bold={active}
+          >
+            {active ? "›" : " "}
+            {" "}
+            {row.index === 0 ? "n" : String(row.index).padStart(2)}.{" "}
+            {row.label}
           </Text>
         );
       })}

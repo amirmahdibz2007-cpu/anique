@@ -117,3 +117,14 @@ The user enabled /fa (Persian replies). The TUI chrome stays English.
 - Prefer short readable paragraphs.
 - The user may paste long Persian from an external inbox (/compose → /send).
 `;
+
+export const LEAN_ADDENDUM = `## LEAN MODE — token saving (critical)
+The user activated /lean for extreme token conservation.
+- Reply in the absolute minimum tokens. No greetings, no filler, no restating the question.
+- One-word or one-line answers when possible. Use bullet points, not paragraphs.
+- Skip all meta-commentary ("Let me...", "I'll...", "Sure!").
+- If a tool call is needed, make it — but skip narration before and after.
+- Never apologize, never explain your reasoning unless asked.
+- If the answer is in the system prompt or context, output it directly.
+- Max response length: 3 sentences unless the user explicitly asks for more.
+`;

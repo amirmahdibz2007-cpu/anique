@@ -31,24 +31,24 @@ export function PlanModal(props: {
       <Box
         flexDirection="column"
         borderStyle="double"
-        borderColor={theme.border}
+        borderColor={theme.primary}
         paddingX={1}
       >
-        <Text bold color={theme.goldBright}>
-          Edit plan note
+        <Text bold color={theme.primaryBright}>
+          edit plan note
         </Text>
-        <Text dimColor>
-          Tell the planner what to change, then Enter. Esc cancels edit.
+        <Text color={theme.textDim}>
+          tell the planner what to change · Esc cancel
         </Text>
         <Box>
-          <Text color={theme.goldBright} bold>
-            ›{" "}
+          <Text color={theme.primaryBright} bold>
+            ❯{" "}
           </Text>
           <TextInput
             value={note}
             onChange={setNote}
             focus
-            placeholder="e.g. skip tests, focus on API only…"
+            placeholder="e.g. skip tests, focus on API…"
             onSubmit={(v) => {
               props.onDecide({ action: "edit", note: v.trim() });
             }}
@@ -62,39 +62,42 @@ export function PlanModal(props: {
     <Box
       flexDirection="column"
       borderStyle="double"
-      borderColor={theme.border}
+      borderColor={theme.primary}
       paddingX={1}
     >
-      <Text bold color={theme.goldBright}>
-        ◆ Deep plan — review before run
+      <Text bold color={theme.primaryBright}>
+        ◈ deep plan · {props.plan.tasks.length} tasks
       </Text>
       <Text>
-        <Text bold>Goal: </Text>
+        <Text bold color={theme.secondary}>goal: </Text>
         {props.plan.goal}
       </Text>
-      <Text bold>Done when:</Text>
+      <Text bold color={theme.textDim}>done when:</Text>
       {props.plan.done_when.map((d, i) => (
-        <Text key={i} dimColor>
+        <Text key={i} color={theme.success}>
           {"  "}✓ {d}
         </Text>
       ))}
-      <Text bold>
-        Tasks ({props.plan.tasks.length}):
+      <Text bold color={theme.textDim}>
+        tasks:
       </Text>
       {props.plan.tasks.map((t, i) => (
         <Box key={t.id} flexDirection="column">
           <Text>
             {"  "}
-            <Text color={theme.gold}>{i + 1}.</Text> {t.title}
-            {t.risky ? <Text color={theme.amber}> ⚠</Text> : null}
+            <Text color={theme.primary}>{i + 1}.</Text> {t.title}
+            {t.risky ? <Text color={theme.warn}> ⚠</Text> : null}
           </Text>
-          <Text dimColor>
+          <Text color={theme.textDim}>
             {"     "}accept: {t.acceptance}
           </Text>
         </Box>
       ))}
-      <Text dimColor>
-        [y] run · [e] edit note · [n] cancel
+      <Text color={theme.successBright} bold>
+        [y] run
+      </Text>
+      <Text color={theme.textDim}>
+        [e] edit · [n] cancel
       </Text>
     </Box>
   );

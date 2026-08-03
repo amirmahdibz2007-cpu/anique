@@ -7,11 +7,8 @@ import type {
 } from "../../safety/interaction.js";
 import { theme } from "../theme.js";
 
-const OWN = "Type my own answer…";
+const OWN = "Type my own…";
 
-/**
- * Clarify UI: show real question text + numbered choices + free-type option.
- */
 export function ClarifyModal(props: {
   questions: ClarifyQuestion[];
   onDone: (answers: ClarifyAnswer[]) => void;
@@ -70,8 +67,8 @@ export function ClarifyModal(props: {
 
   if (!q) {
     return (
-      <Box borderStyle="double" borderColor={theme.border} paddingX={1}>
-        <Text dimColor>No questions.</Text>
+      <Box borderStyle="double" borderColor={theme.borderDim} paddingX={1}>
+        <Text color={theme.textDim}>no questions.</Text>
       </Box>
     );
   }
@@ -80,15 +77,15 @@ export function ClarifyModal(props: {
     <Box
       flexDirection="column"
       borderStyle="double"
-      borderColor={theme.border}
+      borderColor={theme.primary}
       paddingX={1}
     >
-      <Text bold color={theme.goldBright}>
-        ◆ Decision point · {idx + 1}/{props.questions.length}
+      <Text bold color={theme.primaryBright}>
+        ❓ clarify · {idx + 1}/{props.questions.length}
       </Text>
-      <Text dimColor>
-        {answers.length > 0 ? `✓ ${answers.length} answer${answers.length === 1 ? "" : "s"} locked · ` : ""}
-        Anique will use this decision directly
+      <Text color={theme.textDim}>
+        {answers.length > 0 ? `✓ ${answers.length} answered · ` : ""}
+        answering helps Anique give better results
       </Text>
       <Text bold color={theme.text} wrap="wrap">
         {q.prompt}
@@ -96,24 +93,24 @@ export function ClarifyModal(props: {
       {!typingOwn ? (
         <Box flexDirection="column" marginTop={0}>
           {choices.map((c, i) => (
-            <Text key={i} color={c === OWN ? theme.gold : theme.text}>
+            <Text key={i} color={c === OWN ? theme.primary : theme.text}>
               {"  "}
-              <Text color={theme.goldBright} bold>
+              <Text color={theme.primaryBright} bold>
                 {i + 1})
               </Text>{" "}
               {c}
             </Text>
           ))}
-          <Text dimColor>
-            Press 1–{choices.length} to pick · Esc cancel
+          <Text color={theme.textDim}>
+            1–{choices.length} pick · Esc cancel
           </Text>
         </Box>
       ) : (
         <Box flexDirection="column">
-          <Text color={theme.gold}>Type your own answer:</Text>
+          <Text color={theme.primary}>your answer:</Text>
           <Box>
-            <Text color={theme.goldBright} bold>
-              ›{" "}
+            <Text color={theme.primaryBright} bold>
+              ❯{" "}
             </Text>
             <TextInput
               value={draft}
@@ -122,11 +119,11 @@ export function ClarifyModal(props: {
                 if (!v.trim()) return;
                 submitAnswer(v);
               }}
-              placeholder="your answer…"
+              placeholder="type here…"
               focus
             />
           </Box>
-          <Text dimColor>Enter submit · Esc back to choices</Text>
+          <Text color={theme.textDim}>Enter submit · Esc back</Text>
         </Box>
       )}
     </Box>

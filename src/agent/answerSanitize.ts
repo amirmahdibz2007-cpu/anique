@@ -95,13 +95,40 @@ export function stripLeadingMeta(text: string): {
   return { think: meta.join("\n"), answer: answer || (meta.length ? "" : text.trim()) };
 }
 
+/** Strip the user's question if the model echoed it back at the top. */
+const ECHO_RE =
+  /^(?:here(?:'s| is) (?:the |your )?(?:answer|response|reply)[\s:：]*|)?(?:the (?:user|question) (?:is|asks|wants|said|about)\b.*?\n\n)/i;
+
+function stripQuestionEcho(text: string): string {
+  // Only strip if the echo is clearly a preamble (< 300 chars before double newline)
+  const m = text.match(ECHO_RE);
+  if (m && m[0].length < 300) {
+    const rest = text.slice(m[0].length).trim();
+    if (rest.length > 20) return rest;
+  }
+  return text;
+}
+
 /** Prefer cleaned user-facing text; empty if only meta. */
 export function userFacingAnswer(text: string): string {
   const { answer } = splitThinkAnswer(text);
-  if (answer && !isMetaNarration(answer)) return answer;
-  if (answer && answer.length > 40 && !META_ONLY.test(answer.trim())) return answer;
+  const cleaned = stripQuestionEcho(answer || "");
+  if (cleaned && !isMetaNarration(cleaned)) return cleaned;
+  if (cleaned && cleaned.length > 40 && !META_ONLY.test(cleaned.trim())) return cleaned;
   return "";
 }
 
 export const RETRY_DIRECT_ANSWER =
-  "Your previous message only narrated the question (e.g. \"The user is asking…\") and did not answer. Reply to the user directly with useful content now. Do not mention \"the user is asking\". No preamble — just the answer.";
+  `Your previous message was empty or only described the question (e.g. "The user is asking about…"). That is not an answer.
+
+BAD examples (never do these):
+- "The user is asking about the weather in Tehran."
+- "Based on the question, I need to look up weather data."
+- "Let me help you with that." (and then nothing)
+
+GOOD examples (do these):
+- "Tehran weather: 32°C, sunny. Humidity 25%."
+- "I searched the codebase — the bug is in auth.ts line 42: missing await."
+- "I don't have weather data. Enable web_search or give me a city name."
+
+Now: answer the user's original question directly. No preamble. No restating. Just the answer.`;

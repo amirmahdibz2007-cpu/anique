@@ -15,49 +15,54 @@ export function Header(props: {
   cols: number;
   locale?: "en" | "fa";
   scrollInfo?: string;
+  leanMode?: boolean;
 }): React.ReactElement {
   const home = process.env.HOME || "";
   const shortWs = props.workspace.startsWith(home)
     ? `~${props.workspace.slice(home.length)}`
     : props.workspace;
 
+  const ctxBar = "█".repeat(Math.round(props.ctxPct / 10)) +
+    "░".repeat(10 - Math.round(props.ctxPct / 10));
+
+  // Compact header: everything on one line
   return (
     <Box
       borderStyle="round"
-      borderColor={theme.border}
+      borderColor={theme.borderDim}
       paddingX={1}
       justifyContent="space-between"
       width={props.cols}
     >
       <Text>
-        <Text bold color={theme.goldBright}>
-          anique
+        <Text bold color={theme.primaryBright}>
+          ◈ anique
         </Text>
-        <Text color={theme.gold}> {props.profile}</Text>
-        <Text color={theme.heading}> {props.lens}</Text>
+        <Text color={theme.secondary}> {props.profile}</Text>
+        <Text color={theme.primary}> {props.lens}</Text>
         {props.locale === "fa" ? (
-          <Text color={theme.accent}> fa</Text>
+          <Text color={theme.learn}> fa</Text>
+        ) : null}
+        {props.leanMode ? (
+          <Text color={theme.warn}> ⚡lean</Text>
         ) : null}
         {props.lens === "atelier" ? (
-          <Text color={theme.warn}> ⚠private</Text>
+          <Text color={theme.error}> ⚠pvt</Text>
         ) : null}
         <Text dimColor> · </Text>
-        <Text color={theme.accent}>{props.rhythm}</Text>
+        <Text color={theme.model}>{props.rhythm}</Text>
         <Text dimColor> · </Text>
         {props.modelReady ? (
-          <Text dimColor>{props.modelLabel}</Text>
+          <Text color={theme.textDim}>{props.modelLabel}</Text>
         ) : (
-          <Text color={theme.warn}>model: not set</Text>
+          <Text color={theme.warn}>no model</Text>
         )}
-        {props.scrollInfo ? (
-          <Text color={theme.gold}> · {props.scrollInfo}</Text>
-        ) : null}
       </Text>
-      <Text dimColor>
-        {props.ctxPct}% ctx · ${props.costUsd.toFixed(3)}
-        {props.sessionId ? ` · ${props.sessionId.slice(0, 12)}` : ""}
+      <Text color={theme.textDim}>
+        [{ctxBar}] {props.ctxPct}% · ${props.costUsd.toFixed(3)}
+        {props.sessionId ? ` · ${props.sessionId.slice(0, 8)}` : ""}
         {" "}
-        {shortWs.slice(-30)}
+        {shortWs.slice(-28)}
       </Text>
     </Box>
   );

@@ -7,9 +7,6 @@ import type {
   LearnItemView,
 } from "../../safety/interaction.js";
 
-/**
- * Visible self-learning gate: show proposals, toggle keep, confirm.
- */
 export function LearnCard(props: {
   items: LearnItemView[];
   onDecide: (d: LearnDecision) => void;
@@ -80,15 +77,15 @@ export function LearnCard(props: {
       <Box
         flexDirection="column"
         borderStyle="double"
-        borderColor={theme.border}
+        borderColor={theme.learn}
         paddingX={1}
       >
-        <Text bold color={theme.goldBright}>
-          Edit title · Enter save · Esc cancel edit
+        <Text bold color={theme.learnBright}>
+          edit title · Enter save · Esc cancel
         </Text>
         <Box>
-          <Text color={theme.goldBright} bold>
-            ›{" "}
+          <Text color={theme.learnBright} bold>
+            ❯{" "}
           </Text>
           <TextInput
             value={draft}
@@ -115,29 +112,26 @@ export function LearnCard(props: {
     <Box
       flexDirection="column"
       borderStyle="double"
-      borderColor={theme.border}
+      borderColor={theme.learn}
       paddingX={1}
     >
-      <Text bold color={theme.goldBright}>
-        ◆ Anique learned something — add as skill/memory?
+      <Text bold color={theme.learnBright}>
+        ◆ learned — keep as skill?
       </Text>
-      <Text dimColor>
-        Space toggle · ↑↓ · [y] all · [n] skip · [e] edit title · Enter confirm
+      <Text color={theme.textDim}>
+        Space toggle · ↑↓ · [y] all · [n] skip · [e] edit · Enter confirm
       </Text>
       {items.map((it, i) => {
         const on = kept[it.id];
         const active = i === cursor;
         return (
           <Box key={it.id} flexDirection="column">
-            <Text color={active ? theme.goldBright : undefined} bold={active}>
-              {active ? "→" : " "} {on ? "[x]" : "[ ]"} {i + 1}.{" "}
-              <Text color={theme.gold}>[{it.kind}]</Text> {it.title}
+            <Text color={active ? theme.learnBright : undefined} bold={active}>
+              {active ? "›" : " "} {on ? "◆" : "◇"}{" "}
+              <Text color={theme.primary}>[{it.kind}]</Text> {it.title}
             </Text>
-            <Text dimColor>
-              {"     "}why: {it.reason.slice(0, 90)}
-            </Text>
-            <Text dimColor>
-              {"     "}evidence: {it.evidence.slice(0, 90)}
+            <Text color={theme.textDim}>
+              {"   "}why: {it.reason.slice(0, 80)}
             </Text>
           </Box>
         );

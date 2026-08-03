@@ -13,12 +13,10 @@ export function ApprovalModal(props: {
   onDecide: (d: ApprovalDecision) => void;
 }): React.ReactElement {
   useInput((input, key) => {
-    // Enter / y = unlock the whole session (run everything without asking).
     if (key.return || input === "y" || input === "Y") {
       props.onDecide("unlock");
       return;
     }
-    // Space = allow every workspace write for this session (workspace_write only)
     if (input === " " && props.risk === "workspace_write") {
       props.onDecide("workspace");
       return;
@@ -38,33 +36,32 @@ export function ApprovalModal(props: {
 
   const riskColor =
     props.risk === "dangerous"
-      ? theme.amber
+      ? theme.error
       : props.risk === "workspace_write"
-        ? theme.gold
-        : theme.goldBright;
+        ? theme.warn
+        : theme.primary;
 
   return (
     <Box
       flexDirection="column"
       borderStyle="double"
-      borderColor={theme.border}
+      borderColor={theme.warn}
       paddingX={1}
       marginY={0}
     >
-      <Text bold color={theme.goldBright}>
-        Approval required
+      <Text bold color={theme.warnBright}>
+        ⚠ approval needed
         {props.tool ? ` · ${props.tool}` : ""}
       </Text>
       {props.risk ? (
         <Text>
-          risk: <Text color={riskColor} bold>{props.risk}</Text>
+          <Text color={riskColor} bold>{props.risk}</Text>
           {props.permissionMode ? (
-            <Text dimColor> · mode={props.permissionMode}</Text>
+            <Text color={theme.textDim}> · {props.permissionMode}</Text>
           ) : null}
           {props.sessionAllowCount != null ? (
-            <Text dimColor>
-              {" "}
-              · session allows: {props.sessionAllowCount}
+            <Text color={theme.textDim}>
+              {" "}· {props.sessionAllowCount} allowed
             </Text>
           ) : null}
         </Text>
@@ -73,30 +70,19 @@ export function ApprovalModal(props: {
       {props.preview ? (
         <Box
           borderStyle="single"
-          borderColor={theme.faint}
+          borderColor={theme.borderDim}
           paddingX={1}
           flexDirection="column"
         >
-          <Text dimColor>preview</Text>
+          <Text color={theme.textDim}>preview</Text>
           <Text color={theme.text}>{props.preview.slice(0, 280)}</Text>
         </Box>
       ) : null}
-      <Text bold color={theme.goldBright}>
-        [Enter] unlock — run EVERY command freely for this session
+      <Text bold color={theme.successBright}>
+        [Enter] unlock session
       </Text>
-      <Text dimColor>
-        [s] session — allow similar until /clear
-      </Text>
-      {props.risk === "workspace_write" ? (
-        <Text color={theme.gold}>
-          [space] session — allow all workspace writes until /clear
-        </Text>
-      ) : null}
-      <Text dimColor>
-        [a] always — save bash prefix to allowlist
-      </Text>
-      <Text dimColor>
-        [n] deny — Esc also denies
+      <Text color={theme.textDim}>
+        [s] session allow · [a] always · [n] deny
       </Text>
     </Box>
   );

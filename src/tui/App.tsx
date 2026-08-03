@@ -105,7 +105,7 @@ function helpText(): string {
   return [
     "Slash: /deep  /fast  /new  /sessions  /models  /profile  /lens  /plan  /act  /cost",
     "       /atelier  /ingest  /compose  /send  /fa  /en  /redo  /learn  /private",
-    "       /versions  /rollback  /context  /compact  /todos  /undo  /export  /quit",
+    "       /lean  /versions  /rollback  /context  /compact  /todos  /undo  /export  /quit",
     `Lenses: ${listLensIds().join(", ")}`,
     "atelier [private]: deep coding lens — /atelier then /ingest to learn this repo forever",
     "Persian: /compose opens inbox.md in a GUI editor · then /send",
@@ -1145,6 +1145,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
                 approvalMode: c.approvalMode,
                 learning: c.learning,
                 locale: c.locale,
+                leanMode: c.leanMode,
                 hasKey: Boolean(c.apiKey),
                 ui: c.ui,
               },
@@ -1152,6 +1153,25 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
               2,
             ),
           );
+          break;
+        }
+        case "lean": {
+          const arg = (rest[0] || "").toLowerCase();
+          if (arg === "off") {
+            const next = saveConfig({ leanMode: false });
+            setConfig(next);
+            pushSystem("lean mode OFF · normal token usage restored");
+            setStatus("ready");
+            break;
+          }
+          const next = saveConfig({ leanMode: true });
+          setConfig(next);
+          pushSystem(
+            "lean mode ON · extreme token saving for rest of session\n" +
+            "• replies capped at 512 tokens • history compacts aggressively • learning skipped\n" +
+            "/lean off to restore normal mode",
+          );
+          setStatus("lean · saving tokens");
           break;
         }
         default:
@@ -1240,6 +1260,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
         cols={cols}
         locale={locale}
         scrollInfo={scrollInfo}
+        leanMode={config.leanMode}
       />
 
       <MissionStrip

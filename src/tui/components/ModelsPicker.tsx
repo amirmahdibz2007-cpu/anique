@@ -8,10 +8,6 @@ export interface PickerRow {
   hint?: string;
 }
 
-/**
- * Navigable overlay for /models (and similar lists).
- * Enter selects · ↑↓ move · + triggers addProvider · q/Esc cancel
- */
 export function ModelsPicker(props: {
   title: string;
   rows: PickerRow[];
@@ -63,24 +59,24 @@ export function ModelsPicker(props: {
       paddingX={1}
       width={props.width}
     >
-      <Text bold color={theme.goldBright}>
-        {props.title}
+      <Text bold color={theme.primaryBright}>
+        ◈ {props.title}
       </Text>
       {slice.map((row, i) => {
         const idx = start + i;
         const active = idx === cursor;
         const sel = row.id === props.selectedId;
         return (
-          <Text key={row.id} color={active ? theme.goldBright : undefined} bold={active}>
-            {active ? "→" : " "} {String(idx + 1).padStart(2)}.{" "}
-            {sel ? "★ " : "  "}
+          <Text key={row.id} color={active ? theme.primaryBright : undefined} bold={active}>
+            {active ? "›" : " "} {String(idx + 1).padStart(2)}.{" "}
+            {sel ? "★" : " "}
             {row.label}
-            {row.hint ? <Text dimColor> {row.hint}</Text> : null}
+            {row.hint ? <Text color={theme.textDim}> {row.hint}</Text> : null}
           </Text>
         );
       })}
-      <Text dimColor>
-        ↑↓ Enter · number · + add provider · q cancel
+      <Text color={theme.textDim}>
+        ↑↓ Enter · # jump · + add provider · q cancel
       </Text>
     </Box>
   );

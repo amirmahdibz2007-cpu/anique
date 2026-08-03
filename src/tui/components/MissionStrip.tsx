@@ -13,34 +13,39 @@ export function MissionStrip(props: {
   hasModel: boolean;
   unlocked: boolean;
 }): React.ReactElement {
-  const project = props.project || props.workspace.split("/").filter(Boolean).pop() || "default";
-  const state = props.busy ? "● RUNNING" : "○ READY";
-  const stateColor = props.busy ? theme.goldBright : theme.gold;
+  const project =
+    props.project ||
+    props.workspace.split("/").filter(Boolean).pop() ||
+    "default";
+
+  const stateIcon = props.busy ? "●" : "○";
+  const stateColor = props.busy ? theme.primaryBright : theme.textDim;
 
   return (
     <Box
       borderStyle="single"
-      borderColor={theme.faint}
+      borderColor={theme.borderDim}
       paddingX={1}
       width={props.width}
       justifyContent="space-between"
     >
       <Text>
-        <Text color={stateColor} bold>{state}</Text>
-        <Text dimColor>  ·  </Text>
-        <Text color={theme.goldBright} bold>{project}</Text>
-        <Text dimColor>  /  </Text>
-        <Text color={theme.accent}>{props.lens}</Text>
-        <Text dimColor>  /  </Text>
-        <Text color={props.unlocked ? theme.goldBright : theme.text}>
-          {props.unlocked ? "UNLOCKED" : "protected"}
+        <Text color={stateColor} bold>
+          {stateIcon}{" "}
+        </Text>
+        <Text color={theme.primaryBright} bold>
+          {project}
+        </Text>
+        <Text color={theme.textDim}> / </Text>
+        <Text color={theme.primary}>{props.lens}</Text>
+        <Text color={theme.textDim}> · </Text>
+        <Text color={props.unlocked ? theme.warn : theme.textDim}>
+          {props.unlocked ? "unlock" : "safe"}
         </Text>
       </Text>
-      <Text dimColor>
-        {props.hasModel ? "AI ready" : "model missing"} · {props.feedLength} events · {props.status}
+      <Text color={theme.textDim}>
+        {props.feedLength} · {props.status.slice(0, 50)}
       </Text>
     </Box>
   );
 }
-
-export default MissionStrip;

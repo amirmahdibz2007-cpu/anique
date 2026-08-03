@@ -96,31 +96,32 @@ export function buildFeedLines(
 
   for (const item of collapseToolEvents(items)) {
     if (item.kind === "user") {
-      push({ text: "┌ you", color: theme.gold, bold: true });
+      // ── User bubble: sky-blue accent, clean ──
+      push({ text: "╭─ you ─────────────────────────────", color: theme.secondary, dim: true });
       for (const ln of wrapLines(showText(item.text, contentW), contentW)) {
         push({ text: `│ ${ln}`, color: theme.text });
       }
-      push({ text: "└", color: theme.gold, dim: true });
+      push({ text: "╰────────────────────────────────────", color: theme.secondary, dim: true });
       continue;
     }
     if (item.kind === "assistant") {
       const { think, answer } = splitThinkAnswer(item.text);
       const shown = answer || item.text;
+      // ── Think block: minimal, no box ──
       if (think && answer) {
-        push({ text: "┌ think", color: theme.faint, dim: true });
-        const th = think.length > 800 ? think.slice(0, 800) + "\n…" : think;
-        for (const ln of wrapLines(showText(th, contentW), contentW)) {
-          push({ text: `│ ${ln}`, dim: true });
-        }
-        push({ text: "└", color: theme.faint, dim: true });
+        const th = think.length > 400
+          ? "  " + think.slice(0, 400).replace(/\n/g, "\n  ") + "\n  …"
+          : "  " + think.replace(/\n/g, "\n  ");
+        push({ text: th, color: theme.faint, dim: true });
       }
-      push({ text: "┌ answer", color: theme.goldBright, bold: true });
+      // ── Answer: double-border box — premium, stands out ──
       const body =
         shown.length > 200_000 ? shown.slice(0, 200_000) + "\n…" : shown;
+      push({ text: "╔═════════════════════════════════════╗", color: theme.primary, bold: true });
       for (const ln of wrapLines(showText(body, contentW), contentW)) {
-        push({ text: `│ ${ln}`, color: theme.text });
+        push({ text: `║ ${ln}`, color: theme.text });
       }
-      push({ text: "└", color: theme.goldBright, dim: true });
+      push({ text: "╚═════════════════════════════════════╝", color: theme.primary, dim: true });
       continue;
     }
     if (item.kind === "system") {
@@ -132,37 +133,40 @@ export function buildFeedLines(
     }
 
     if (item.event.kind === "rhythm") {
-      push({ text: `◇ ${item.event.summary}`, dim: true });
+      push({ text: `◇ ${item.event.summary}`, color: theme.model, dim: true });
       continue;
     }
     if (item.event.kind === "system") {
       const learn = /^(learning|learned|skipped learn)/.test(item.event.summary);
+      const lean = /^lean\b/i.test(item.event.summary);
+      const compacted = /^history compacted/i.test(item.event.summary);
       push({
-        text: `${learn ? "◆" : "·"} ${item.event.summary}`,
-        color: learn ? theme.goldBright : undefined,
-        dim: !learn,
+        text: `${learn ? "◆" : lean ? "◈" : compacted ? "↺" : "·"} ${item.event.summary}`,
+        color: learn ? theme.learn : lean ? theme.primary : compacted ? theme.info : undefined,
+        dim: !learn && !lean,
       });
       continue;
     }
     if (item.event.kind === "approval") {
-      push({ text: `? ${item.event.summary}`, color: theme.amber });
+      push({ text: `? ${item.event.summary}`, color: theme.warn });
       continue;
     }
     push({
       text: `⚙ ${item.event.summary}`,
-      color: item.event.kind === "tool" ? theme.faint : theme.gold,
+      color: item.event.kind === "tool" ? theme.faint : theme.primary,
       dim: item.event.kind === "tool",
     });
   }
 
   if (streamBuf) {
-    push({ text: "┌ streaming…", color: theme.gold, bold: true });
+    // ── Streaming indicator with animation-like prefix ──
+    push({ text: "╭─ streaming… ───────────────────────", color: theme.primaryBright, bold: true });
     const body =
       streamBuf.length > 8000 ? streamBuf.slice(-8000) : streamBuf;
     for (const ln of wrapLines(showText(body, contentW), contentW)) {
-      push({ text: `│ ${ln}`, color: theme.text });
+      push({ text: `│ ${ln}`, color: theme.tertiary });
     }
-    push({ text: "└", color: theme.gold, dim: true });
+    push({ text: "╰────────────────────────────────────", color: theme.primaryBright, dim: true });
   }
 
   return lines;
@@ -193,7 +197,7 @@ export function Feed(props: {
     <Box
       flexDirection="column"
       borderStyle="single"
-      borderColor={theme.border}
+      borderColor={theme.borderDim}
       paddingX={1}
       height={props.height}
       width={props.width}
@@ -202,9 +206,9 @@ export function Feed(props: {
       {hiddenAbove > 0 || hiddenBelow > 0 ? (
         <Text dimColor>
           {hiddenAbove > 0 ? `↑ ${hiddenAbove} · ` : ""}
-          PgUp/PgDn scroll
-          {hiddenBelow > 0 ? ` · ↓ ${hiddenBelow} more` : " · bottom"}
-          {scrollPercent !== "0" ? ` · 📜 ${scrollPercent}%` : ""}
+          scroll
+          {hiddenBelow > 0 ? ` · ↓ ${hiddenBelow}` : " · bottom"}
+          {scrollPercent !== "0" ? ` · ${scrollPercent}%` : ""}
         </Text>
       ) : null}
       {visible.map((ln) => (

@@ -14,22 +14,28 @@ export function Prompt(props: {
   width: number;
 }): React.ReactElement {
   const placeholder = props.busy
-    ? "agent running… (Esc to interrupt)"
+    ? "working… (Esc)"
     : props.modelsMode
-      ? "answer prompt…"
+      ? "pick…"
       : props.modelReady
-        ? "ask Anique…  (/compose for Persian inbox · /send)"
-        : "/models to set provider";
+        ? "ask anything…"
+        : "/models to start";
+
+  const borderColor = props.busy
+    ? theme.primary
+    : props.focused
+      ? theme.border
+      : theme.borderDim;
 
   return (
     <Box
       borderStyle="round"
-      borderColor={props.busy ? theme.faint : theme.border}
+      borderColor={borderColor}
       paddingX={1}
       width={props.width}
     >
-      <Text color={theme.goldBright} bold>
-        ›{" "}
+      <Text color={theme.primaryBright} bold>
+        ❯{" "}
       </Text>
       <Box flexGrow={1}>
         <TextInput
