@@ -22,6 +22,7 @@
     "smoke": "tsx --experimental-sqlite scripts/smoke.ts",
     "e2e": "tsx --experimental-sqlite scripts/e2e-approval.ts",
     "e2e:web": "tsx --experimental-sqlite scripts/e2e-web.ts",
+    "e2e:unlock": "tsx --experimental-sqlite scripts/e2e-unlock-flow.ts",
     "postbuild": "node -e \"import('node:fs').then(fs=>fs.chmodSync('dist/index.js',0o755))\""
   },
   "engines": {

@@ -84,11 +84,14 @@ export function ApprovalModal(props: {
           <Text color="white">{props.preview.slice(0, 280)}</Text>
         </Box>
       ) : null}
+      <Text bold color="green">
+        [u] unlock — run EVERY command freely for this session (recommended)
+      </Text>
       <Text dimColor>
         [y] once — this action only
       </Text>
       {props.risk === "workspace_write" ? (
-        <Text dimColor>
+        <Text color="yellow">
           [space] session — allow all workspace writes until /clear
         </Text>
       ) : null}
@@ -97,9 +100,6 @@ export function ApprovalModal(props: {
       </Text>
       <Text dimColor>
         [a] always — save bash prefix to allowlist
-      </Text>
-      <Text bold color="green">
-        [u] unlock — allow EVERY command for this session (no more prompts)
       </Text>
       <Text dimColor>
         [n] deny — Esc also denies

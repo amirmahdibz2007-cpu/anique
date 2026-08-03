@@ -6,6 +6,7 @@ export function StatusBar(props: {
   busy: boolean;
   status: string;
   width: number;
+  unlocked?: boolean;
   scrollInfo?: string;
   feedLength?: number;
   sessionId?: string;
@@ -13,7 +14,9 @@ export function StatusBar(props: {
   const spin = useSpinner(props.busy);
   const hint = props.busy
     ? "Esc to interrupt"
-    : "↑/↓ scroll · PgUp/PgDn · /compose · /send · /redo · /models";
+    : props.unlocked
+      ? "🔓 free — /lock to re-enable approvals"
+      : "↑/↓ scroll · /unlock · /compose · /send · /redo · /models";
 
   return (
     <Box justifyContent="space-between" width={props.width} paddingX={1}>

@@ -1353,6 +1353,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
         busy={busy}
         status={status}
         width={cols}
+        unlocked={isSessionUnlocked()}
         scrollInfo={scrollLines > 0 ? `📜 ${scrollPercent}%` : ""}
         feedLength={feed.length}
         sessionId={sessionId}
