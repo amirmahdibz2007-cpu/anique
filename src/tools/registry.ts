@@ -13,6 +13,7 @@ import type { ToolDefinition } from "../providers/types.js";
 import {
   askApprovalDecision,
   applyApprovalDecision,
+  askWebSearchPermission,
   classifyBash,
   classifyWrite,
   hasSessionAllow,
@@ -623,7 +624,94 @@ const handlers: Record<string, ToolHandler> = {
     if (!updated) return { ok: false, output: `todo not found: ${id}` };
     return { ok: true, output: formatTodos(), risk: "safe" };
   },
+
+  async web_search(args, ctx) {
+    const query = String(args.query ?? "").trim();
+    if (!query) return { ok: false, output: "query required" };
+    // Consent to search the internet is asked only ONCE per session.
+    const allowed = await askWebSearchPermission(
+      `web_search: "${query.slice(0, 80)}" — may I search the internet?`,
+    );
+    if (!allowed) {
+      return { ok: false, output: "web search denied (session consent withheld)", denied: true };
+    }
+    try {
+      const results = await ddgSearch(query, Number(args.max_results ?? 6));
+      return { ok: true, output: results, risk: "safe" };
+    } catch (err) {
+      return { ok: false, output: `web_search failed: ${String(err)}` };
+    }
+  },
 };
+
+/**
+ * Minimal DuckDuckGo HTML search — no API key required.
+ * Extracts result titles + snippets (+ URL when present).
+ */
+async function ddgSearch(query: string, max: number): Promise<string> {
+  const url =
+    "https://html.duckduckgo.com/html/?q=" + encodeURIComponent(query);
+  const res = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36",
+    },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const html = await res.text();
+  const out: string[] = [];
+  const re =
+    /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/gi;
+  let m: RegExpExecArray | null;
+  let n = 0;
+  while ((m = re.exec(html)) !== null && n < max) {
+    const href = m[1]!;
+    // DuckDuckGo wraps real links in /l/?uddg=<encoded>. Extract it if present.
+    let link = href;
+    const uddg = href.match(/[?&]uddg=([^&]+)/);
+    if (uddg?.[1]) {
+      try {
+        link = decodeURIComponent(uddg[1]);
+      } catch {
+        link = uddg[1]!;
+      }
+    } else {
+      try {
+        link = decodeURIComponent(href);
+      } catch {
+        /* keep raw */
+      }
+    }
+    const title = stripTags(m[2]!);
+    const snippet = stripTags(m[3] ?? "");
+    out.push(`• ${title}\n  ${snippet}\n  ${link}`);
+    n++;
+  }
+  if (!out.length) {
+    // Fallback: return any links found on the page
+    const anyLink = /<a[^>]*class="result__a"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/gi;
+    while ((m = anyLink.exec(html)) !== null && n < max) {
+      out.push(`• ${stripTags(m[2]!)}\n  ${m[1]!}`);
+      n++;
+    }
+  }
+  if (!out.length) return "(no results)";
+  return out.join("\n\n");
+}
+
+function stripTags(s: string): string {
+  return s
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#x27;/g, "'")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 export function getToolDefinitions(names: string[]): ToolDefinition[] {
   const catalog: Record<string, ToolDefinition> = {
@@ -948,6 +1036,22 @@ export function getToolDefinitions(names: string[]): ToolDefinition[] {
             },
           },
           required: ["id"],
+        },
+      },
+    },
+    web_search: {
+      type: "function",
+      function: {
+        name: "web_search",
+        description:
+          "Search the internet for current information (news, docs, prices, facts). Asks the user for consent once per session.",
+        parameters: {
+          type: "object",
+          properties: {
+            query: { type: "string", description: "Search query" },
+            max_results: { type: "number", description: "Max results (default 6)" },
+          },
+          required: ["query"],
         },
       },
     },

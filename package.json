@@ -21,6 +21,7 @@
     "typecheck": "tsc --noEmit",
     "smoke": "tsx --experimental-sqlite scripts/smoke.ts",
     "e2e": "tsx --experimental-sqlite scripts/e2e-approval.ts",
+    "e2e:web": "tsx --experimental-sqlite scripts/e2e-web.ts",
     "postbuild": "node -e \"import('node:fs').then(fs=>fs.chmodSync('dist/index.js',0o755))\""
   },
   "engines": {

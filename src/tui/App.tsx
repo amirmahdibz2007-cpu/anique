@@ -37,6 +37,7 @@ import { formatTodos } from "../agent/todos.js";
 import { undoLastSnapshot } from "../agent/undo.js";
 import {
   clearSessionAllows,
+  clearWebSearchConsent,
   sessionAllowCount,
   setApprovalHandler,
   unlockSession,
@@ -1102,6 +1103,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
           setHistory([]);
           setSessionId(undefined);
           clearSessionAllows();
+          clearWebSearchConsent();
           lockSession();
           pushSystem("cleared");
           break;

@@ -50,6 +50,7 @@ const COMMON_TOOLS = [
   "todo_write",
   "todo_list",
   "todo_update",
+  "web_search",
 ];
 
 const CODE_TOOLS = [

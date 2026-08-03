@@ -107,6 +107,60 @@ export function lockSession(): void {
   sessionAllows.delete(UNLOCK_KEY);
 }
 
+/** -- web search -- once-per-session consent ----------------------------- */
+let webAsked = false;
+let webAllowed = false;
+
+export function webSearchAsked(): boolean {
+  return webAsked;
+}
+
+export function webSearchAllowed(): boolean {
+  return webAllowed;
+}
+
+export function setWebSearchConsent(allowed: boolean): void {
+  webAsked = true;
+  webAllowed = allowed;
+}
+
+export function clearWebSearchConsent(): void {
+  webAsked = false;
+  webAllowed = false;
+}
+
+/**
+ * Ask the user whether the agent may search the internet — but only ONCE per
+ * session. Subsequent calls reuse the stored decision without prompting.
+ */
+export async function askWebSearchPermission(prompt: string): Promise<boolean> {
+  if (webAsked) return webAllowed;
+  webAsked = true;
+  if (approvalHandler) {
+    const d = await approvalHandler({
+      prompt,
+      risk: "safe",
+      tool: "web_search",
+      preview: prompt,
+    });
+    webAllowed = d !== "deny";
+    return webAllowed;
+  }
+  if (!process.stdin.isTTY) {
+    console.error(`[web search requires consent, non-TTY — denying] ${prompt}`);
+    webAllowed = false;
+    return false;
+  }
+  const rl = createInterface({ input: process.stdin, output: process.stderr });
+  const answer = await new Promise<string>((resolve) => {
+    rl.question(`${prompt}\n  [y]es allow web search [n]o (one-time ask) › `, resolve);
+  });
+  rl.close();
+  const a = answer.trim().toLowerCase();
+  webAllowed = a.startsWith("y");
+  return webAllowed;
+}
+
 export interface ApprovalRequest {
   prompt: string;
   risk?: RiskLevel;
