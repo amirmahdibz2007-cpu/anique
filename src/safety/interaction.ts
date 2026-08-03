@@ -161,7 +161,11 @@ export async function askClarify(
   if (clarifyHandler) return clarifyHandler(qs);
 
   if (!process.stdin.isTTY) {
-    return qs.map((q) => ({ id: q.id, answer: "(no input — skipped)" }));
+    // Non-interactive: auto-pick first choice with a note
+    return qs.map((q) => ({
+      id: q.id,
+      answer: q.choices[0] || `(auto: ${q.prompt})`,
+    }));
   }
 
   const answers: ClarifyAnswer[] = [];

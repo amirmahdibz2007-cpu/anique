@@ -46,7 +46,7 @@ export async function triagePrompt(
   prompt: string,
   clarifications?: string,
 ): Promise<TriageResult> {
-  // Cheap local bias for /fast-ish short prompts
+  // Short clear requests: skip triage entirely
   if (!clarifications && heuristicSimple(prompt)) {
     return {
       complexity: "simple",
@@ -56,29 +56,26 @@ export async function triagePrompt(
     };
   }
 
+  // Longer requests: ask only high-signal questions (refined prompt)
   const user = [
-    "Classify this user request for an agent. Guess less — if anything important is missing, mark ambiguous and ask.",
+    "Classify this request. Be decisive — only ask questions when truly blocked.",
+    "Rules: 0 questions unless a decision fork changes architecture, risks, or scope drastically.",
     "Return ONLY JSON:",
-    `{"complexity":"simple"|"complex","clarity":"clear"|"ambiguous","questions":[{"id":"q1","prompt":"Full question in plain language?","choices":["Option A","Option B","Option C"]}],"reason":"..."}`,
-    "Rules:",
-    "- max 3 questions; only if ambiguous",
-    "- each question MUST have a real `prompt` (never the word Clarify alone)",
-    "- each question MUST include 2–4 concrete `choices`",
-    "- complex = multi-file, architecture, multi-step, or high stakes",
+    `{"complexity":"simple"|"complex","clarity":"clear"|"ambiguous","questions":[],"reason":"..."}`,
     "",
     `Request:\n${prompt}`,
-    clarifications ? `\n${clarifications}` : "",
+    clarifications ? `\nUser answers:\n${clarifications}` : "",
   ].join("\n");
 
   try {
     const res = await chatComplete(config, {
       model: config.model,
-      temperature: 0.1,
+      temperature: 0.05,
       messages: [
         {
           role: "system",
           content:
-            "You are Anique triage. Output valid JSON only. Prefer asking over guessing. Never use empty or placeholder question text.",
+            "You are Anique triage. Be decisive. Ask questions only when a decision fork truly blocks progress. JSON only.",
         },
         { role: "user", content: user },
       ],
@@ -271,61 +268,53 @@ export async function prepareDeepPlan(opts: {
   | { kind: "plan"; plan: DeepPlan; clarifications: string }
 > {
   const { config, prompt, mode } = opts;
-  if (mode !== "force") return { kind: "skip" }; // only /deep asks questions
+  if (mode === "off") return { kind: "skip" };
 
   let clarifications = "";
-  let triageRounds = 0;
 
-  while (triageRounds < 2) {
-    triageRounds += 1;
-    opts.onStatus?.(`triage · round ${triageRounds}`);
-    const triage = await triagePrompt(config, prompt, clarifications || undefined);
-
-    if (triage.clarity === "ambiguous" && triage.questions.length) {
-      opts.onStatus?.("waiting on you · clarify");
+  // Fast triage: one round, quick decision
+  if (mode !== "force") {
+    const triage = await triagePrompt(config, prompt);
+    if (triage.questions.length) {
       const answers = await askClarify(triage.questions);
-      if (answers.some((a) => a.answer === "(cancelled)")) {
-        return { kind: "cancel" };
-      }
-      clarifications = [clarifications, formatClarifyBlock(answers)]
-        .filter(Boolean)
-        .join("\n");
-      continue;
+      if (answers.some((a) => a.answer === "(cancelled)")) return { kind: "cancel" };
+      clarifications = formatClarifyBlock(answers);
     }
-
-    break;
+    if (triage.complexity === "simple") return { kind: "skip" };
+  } else {
+    // /deep: more thorough
+    opts.onStatus?.("triage");
+    const triage = await triagePrompt(config, prompt);
+    if (triage.questions.length) {
+      const answers = await askClarify(triage.questions);
+      if (answers.some((a) => a.answer === "(cancelled)")) return { kind: "cancel" };
+      clarifications = formatClarifyBlock(answers);
+    }
   }
 
-  let editNote: string | undefined;
-  let planRounds = 0;
-  while (planRounds < 2) { // was 3, enough
-    planRounds += 1;
-    opts.onStatus?.(`planning · draft ${planRounds}`);
-    let plan = await buildDeepPlan(config, prompt, clarifications, editNote);
+  opts.onStatus?.("planning");
+  let plan = await buildDeepPlan(config, prompt, clarifications);
 
-    if (plan.questions?.length) {
-      opts.onStatus?.("waiting on you · planner questions");
-      const answers = await askClarify(plan.questions);
-      if (answers.some((a) => a.answer === "(cancelled)")) {
-        return { kind: "cancel" };
-      }
-      clarifications = [clarifications, formatClarifyBlock(answers)]
-        .filter(Boolean)
-        .join("\n");
-      plan = await buildDeepPlan(config, prompt, clarifications, editNote);
-    }
-
-    opts.onStatus?.("waiting on you · approve plan");
-    const decision = await askPlanApproval(plan);
-    if (decision.action === "cancel") return { kind: "cancel" };
-    if (decision.action === "edit") {
-      editNote = decision.note;
-      continue;
-    }
-    syncPlanTodos(plan);
-    return { kind: "plan", plan, clarifications };
+  if (plan.questions?.length) {
+    opts.onStatus?.("waiting on you · planning");
+    const answers = await askClarify(plan.questions);
+    if (answers.some((a) => a.answer === "(cancelled)")) return { kind: "cancel" };
+    clarifications = [clarifications, formatClarifyBlock(answers)]
+      .filter(Boolean).join("\n");
+    plan = await buildDeepPlan(config, prompt, clarifications);
   }
-  return { kind: "cancel" };
+
+  opts.onStatus?.("approve plan");
+  const decision = await askPlanApproval(plan);
+  if (decision.action === "cancel") return { kind: "cancel" };
+  if (decision.action === "edit") {
+    // One quick re-plan with edit note; no re-approval
+    plan = await buildDeepPlan(config, prompt, clarifications, decision.note);
+    const d2 = await askPlanApproval(plan);
+    if (d2.action !== "approve") return { kind: "cancel" };
+  }
+  syncPlanTodos(plan);
+  return { kind: "plan", plan, clarifications };
 }
 
 export function taskUserMessage(

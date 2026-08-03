@@ -156,13 +156,13 @@ export function buildFeedLines(
   }
 
   if (streamBuf) {
-    push({ text: "┌ streaming…", color: "yellow", bold: true });
+    push({ text: "┌ streaming…", color: theme.gold, bold: true });
     const body =
       streamBuf.length > 8000 ? streamBuf.slice(-8000) : streamBuf;
     for (const ln of wrapLines(showText(body, contentW), contentW)) {
-      push({ text: `│ ${ln}`, color: "yellow" });
+      push({ text: `│ ${ln}`, color: theme.text });
     }
-    push({ text: "└", color: "yellow", dim: true });
+    push({ text: "└", color: theme.gold, dim: true });
   }
 
   return lines;
