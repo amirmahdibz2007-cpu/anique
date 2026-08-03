@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import type { SessionRow } from "../../store/db.js";
+import { theme } from "../theme.js";
 
 function shortTime(iso: string): string {
   try {
@@ -75,7 +76,7 @@ export function SessionPicker(props: {
         index: 0,
         label: (
           <Text>
-            <Text bold color="green">
+            <Text bold color={theme.goldBright}>
               New chat
             </Text>
             <Text dimColor> — start fresh</Text>
@@ -89,7 +90,7 @@ export function SessionPicker(props: {
         index: i,
         label: (
           <Text>
-            <Text color="cyan">{s.lens.padEnd(7)}</Text>
+            <Text color={theme.gold}>{s.lens.padEnd(7)}</Text>
             <Text> {s.title.slice(0, 42) || "(untitled)"}</Text>
             <Text dimColor>
               {"  "}
@@ -105,12 +106,12 @@ export function SessionPicker(props: {
     <Box
       flexDirection="column"
       borderStyle="round"
-      borderColor="magenta"
+      borderColor={theme.border}
       paddingX={1}
       width={props.width}
       height={Math.min(20, 6 + rows.length)}
     >
-      <Text bold color="magenta">
+      <Text bold color={theme.goldBright}>
         ◆ Continue where you left off
       </Text>
       <Text dimColor>
@@ -122,7 +123,7 @@ export function SessionPicker(props: {
       {rows.map((row) => {
         const active = row.index === cursor;
         return (
-          <Text key={row.key} color={active ? "cyan" : undefined} bold={active}>
+          <Text key={row.key} color={active ? theme.goldBright : undefined} bold={active}>
             {active ? "→" : " "}{" "}
             {row.index === 0 ? "N" : String(row.index).padStart(2)}. {row.label}
           </Text>

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
 import type { DeepPlan, PlanDecision } from "../../safety/interaction.js";
+import { theme } from "../theme.js";
 
 export function PlanModal(props: {
   plan: DeepPlan;
@@ -30,17 +31,17 @@ export function PlanModal(props: {
       <Box
         flexDirection="column"
         borderStyle="double"
-        borderColor="magenta"
+        borderColor={theme.border}
         paddingX={1}
       >
-        <Text bold color="magenta">
+        <Text bold color={theme.goldBright}>
           Edit plan note
         </Text>
         <Text dimColor>
           Tell the planner what to change, then Enter. Esc cancels edit.
         </Text>
         <Box>
-          <Text color="magenta" bold>
+          <Text color={theme.goldBright} bold>
             ›{" "}
           </Text>
           <TextInput
@@ -61,10 +62,10 @@ export function PlanModal(props: {
     <Box
       flexDirection="column"
       borderStyle="double"
-      borderColor="magenta"
+      borderColor={theme.border}
       paddingX={1}
     >
-      <Text bold color="magenta">
+      <Text bold color={theme.goldBright}>
         ◆ Deep plan — review before run
       </Text>
       <Text>
@@ -84,8 +85,8 @@ export function PlanModal(props: {
         <Box key={t.id} flexDirection="column">
           <Text>
             {"  "}
-            <Text color="magenta">{i + 1}.</Text> {t.title}
-            {t.risky ? <Text color="yellow"> ⚠</Text> : null}
+            <Text color={theme.gold}>{i + 1}.</Text> {t.title}
+            {t.risky ? <Text color={theme.amber}> ⚠</Text> : null}
           </Text>
           <Text dimColor>
             {"     "}accept: {t.acceptance}

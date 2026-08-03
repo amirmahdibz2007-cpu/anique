@@ -1,10 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
+import { theme } from "../theme.js";
 
-/**
- * Top status header. Single line, space-efficient: identity on the left,
- * context (ctx% / cost / session) on the right.
- */
 export function Header(props: {
   profile: string;
   lens: string;
@@ -27,33 +24,33 @@ export function Header(props: {
   return (
     <Box
       borderStyle="round"
-      borderColor="cyan"
+      borderColor={theme.border}
       paddingX={1}
       justifyContent="space-between"
       width={props.cols}
     >
       <Text>
-        <Text bold color="cyan">
+        <Text bold color={theme.goldBright}>
           anique
         </Text>
-        <Text color="magenta"> {props.profile}</Text>
-        <Text color="green"> {props.lens}</Text>
+        <Text color={theme.gold}> {props.profile}</Text>
+        <Text color={theme.heading}> {props.lens}</Text>
         {props.locale === "fa" ? (
-          <Text color="yellow"> fa</Text>
+          <Text color={theme.accent}> fa</Text>
         ) : null}
         {props.lens === "atelier" ? (
-          <Text color="magenta"> ⚠private</Text>
+          <Text color={theme.warn}> ⚠private</Text>
         ) : null}
         <Text dimColor> · </Text>
-        <Text color="blue">{props.rhythm}</Text>
+        <Text color={theme.accent}>{props.rhythm}</Text>
         <Text dimColor> · </Text>
         {props.modelReady ? (
           <Text dimColor>{props.modelLabel}</Text>
         ) : (
-          <Text color="yellow">model: not set</Text>
+          <Text color={theme.warn}>model: not set</Text>
         )}
         {props.scrollInfo ? (
-          <Text color="yellow"> · {props.scrollInfo}</Text>
+          <Text color={theme.gold}> · {props.scrollInfo}</Text>
         ) : null}
       </Text>
       <Text dimColor>

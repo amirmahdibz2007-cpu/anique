@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
+import { theme } from "../theme.js";
 
 export interface PickerRow {
   id: string;
@@ -58,11 +59,11 @@ export function ModelsPicker(props: {
     <Box
       flexDirection="column"
       borderStyle="round"
-      borderColor="magenta"
+      borderColor={theme.border}
       paddingX={1}
       width={props.width}
     >
-      <Text bold color="magenta">
+      <Text bold color={theme.goldBright}>
         {props.title}
       </Text>
       {slice.map((row, i) => {
@@ -70,7 +71,7 @@ export function ModelsPicker(props: {
         const active = idx === cursor;
         const sel = row.id === props.selectedId;
         return (
-          <Text key={row.id} color={active ? "cyan" : undefined} bold={active}>
+          <Text key={row.id} color={active ? theme.goldBright : undefined} bold={active}>
             {active ? "→" : " "} {String(idx + 1).padStart(2)}.{" "}
             {sel ? "★ " : "  "}
             {row.label}

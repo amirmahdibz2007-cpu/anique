@@ -5,6 +5,7 @@ import type {
   ClarifyAnswer,
   ClarifyQuestion,
 } from "../../safety/interaction.js";
+import { theme } from "../theme.js";
 
 const OWN = "Type my own answer…";
 
@@ -69,7 +70,7 @@ export function ClarifyModal(props: {
 
   if (!q) {
     return (
-      <Box borderStyle="double" borderColor="cyan" paddingX={1}>
+      <Box borderStyle="double" borderColor={theme.border} paddingX={1}>
         <Text dimColor>No questions.</Text>
       </Box>
     );
@@ -79,21 +80,21 @@ export function ClarifyModal(props: {
     <Box
       flexDirection="column"
       borderStyle="double"
-      borderColor="cyan"
+      borderColor={theme.border}
       paddingX={1}
     >
-      <Text bold color="cyan">
+      <Text bold color={theme.goldBright}>
         Clarify · question {idx + 1}/{props.questions.length}
       </Text>
-      <Text bold color="white" wrap="wrap">
+      <Text bold color={theme.text} wrap="wrap">
         {q.prompt}
       </Text>
       {!typingOwn ? (
         <Box flexDirection="column" marginTop={0}>
           {choices.map((c, i) => (
-            <Text key={i} color={c === OWN ? "yellow" : "white"}>
+            <Text key={i} color={c === OWN ? theme.gold : theme.text}>
               {"  "}
-              <Text color="cyan" bold>
+              <Text color={theme.goldBright} bold>
                 {i + 1})
               </Text>{" "}
               {c}
@@ -105,9 +106,9 @@ export function ClarifyModal(props: {
         </Box>
       ) : (
         <Box flexDirection="column">
-          <Text color="yellow">Type your own answer:</Text>
+          <Text color={theme.gold}>Type your own answer:</Text>
           <Box>
-            <Text color="cyan" bold>
+            <Text color={theme.goldBright} bold>
               ›{" "}
             </Text>
             <TextInput

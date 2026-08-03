@@ -3,6 +3,7 @@ import { Box, Text } from "ink";
 import type { TraceEvent } from "../../store/db.js";
 import { hasPersian, shapeForTerm } from "../../i18n/termFa.js";
 import { splitThinkAnswer } from "../../agent/answerSanitize.js";
+import { theme } from "../theme.js";
 
 export type FeedItem =
   | { id: string; kind: "user"; text: string }
@@ -95,31 +96,31 @@ export function buildFeedLines(
 
   for (const item of collapseToolEvents(items)) {
     if (item.kind === "user") {
-      push({ text: "┌ you", color: "green", bold: true });
+      push({ text: "┌ you", color: theme.gold, bold: true });
       for (const ln of wrapLines(showText(item.text, contentW), contentW)) {
-        push({ text: `│ ${ln}`, color: "white" });
+        push({ text: `│ ${ln}`, color: theme.text });
       }
-      push({ text: "└", color: "green", dim: true });
+      push({ text: "└", color: theme.gold, dim: true });
       continue;
     }
     if (item.kind === "assistant") {
       const { think, answer } = splitThinkAnswer(item.text);
       const shown = answer || item.text;
       if (think && answer) {
-        push({ text: "┌ think", color: "gray", dim: true });
+        push({ text: "┌ think", color: theme.faint, dim: true });
         const th = think.length > 800 ? think.slice(0, 800) + "\n…" : think;
         for (const ln of wrapLines(showText(th, contentW), contentW)) {
           push({ text: `│ ${ln}`, dim: true });
         }
-        push({ text: "└", color: "gray", dim: true });
+        push({ text: "└", color: theme.faint, dim: true });
       }
-      push({ text: "┌ answer", color: "cyan", bold: true });
+      push({ text: "┌ answer", color: theme.goldBright, bold: true });
       const body =
         shown.length > 200_000 ? shown.slice(0, 200_000) + "\n…" : shown;
       for (const ln of wrapLines(showText(body, contentW), contentW)) {
-        push({ text: `│ ${ln}`, color: "white" });
+        push({ text: `│ ${ln}`, color: theme.text });
       }
-      push({ text: "└", color: "cyan", dim: true });
+      push({ text: "└", color: theme.goldBright, dim: true });
       continue;
     }
     if (item.kind === "system") {
@@ -138,18 +139,18 @@ export function buildFeedLines(
       const learn = /^(learning|learned|skipped learn)/.test(item.event.summary);
       push({
         text: `${learn ? "◆" : "·"} ${item.event.summary}`,
-        color: learn ? "magenta" : undefined,
+        color: learn ? theme.goldBright : undefined,
         dim: !learn,
       });
       continue;
     }
     if (item.event.kind === "approval") {
-      push({ text: `? ${item.event.summary}`, color: "yellow" });
+      push({ text: `? ${item.event.summary}`, color: theme.amber });
       continue;
     }
     push({
       text: `⚙ ${item.event.summary}`,
-      color: item.event.kind === "tool" ? "gray" : "green",
+      color: item.event.kind === "tool" ? theme.faint : theme.gold,
       dim: item.event.kind === "tool",
     });
   }
@@ -192,7 +193,7 @@ export function Feed(props: {
     <Box
       flexDirection="column"
       borderStyle="single"
-      borderColor="gray"
+      borderColor={theme.border}
       paddingX={1}
       height={props.height}
       width={props.width}

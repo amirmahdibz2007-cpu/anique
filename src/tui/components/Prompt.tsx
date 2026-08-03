@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import TextInput from "ink-text-input";
+import { theme } from "../theme.js";
 
 export function Prompt(props: {
   value: string;
@@ -23,11 +24,11 @@ export function Prompt(props: {
   return (
     <Box
       borderStyle="round"
-      borderColor={props.busy ? "gray" : "green"}
+      borderColor={props.busy ? theme.faint : theme.border}
       paddingX={1}
       width={props.width}
     >
-      <Text color="green" bold>
+      <Text color={theme.goldBright} bold>
         ›{" "}
       </Text>
       <Box flexGrow={1}>

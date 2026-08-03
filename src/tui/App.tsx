@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Text, useApp, useInput } from "ink";
+import { theme } from "./theme.js";
 import { loadConfig, saveConfig } from "../config/index.js";
 import { describeLenses, getLens, listLensIds } from "../lenses/index.js";
 import { runAgent, type Rhythm } from "../agent/loop.js";
@@ -1249,8 +1250,8 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
       />
 
       {showHelp ? (
-        <Box borderStyle="single" borderColor="blue" paddingX={1}>
-          <Text color="blue">{helpText()}</Text>
+        <Box borderStyle="single" borderColor={theme.border} paddingX={1}>
+          <Text color={theme.gold}>{helpText()}</Text>
         </Box>
       ) : null}
 

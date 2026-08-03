@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Text, useInput } from "ink";
 import type { ApprovalDecision, RiskLevel } from "../../safety/approval.js";
+import { theme } from "../theme.js";
 
 export function ApprovalModal(props: {
   prompt: string;
@@ -37,20 +38,20 @@ export function ApprovalModal(props: {
 
   const riskColor =
     props.risk === "dangerous"
-      ? "red"
+      ? theme.amber
       : props.risk === "workspace_write"
-        ? "yellow"
-        : "green";
+        ? theme.gold
+        : theme.goldBright;
 
   return (
     <Box
       flexDirection="column"
       borderStyle="double"
-      borderColor="yellow"
+      borderColor={theme.border}
       paddingX={1}
       marginY={0}
     >
-      <Text bold color="yellow">
+      <Text bold color={theme.goldBright}>
         Approval required
         {props.tool ? ` · ${props.tool}` : ""}
       </Text>
@@ -72,22 +73,22 @@ export function ApprovalModal(props: {
       {props.preview ? (
         <Box
           borderStyle="single"
-          borderColor="gray"
+          borderColor={theme.faint}
           paddingX={1}
           flexDirection="column"
         >
           <Text dimColor>preview</Text>
-          <Text color="white">{props.preview.slice(0, 280)}</Text>
+          <Text color={theme.text}>{props.preview.slice(0, 280)}</Text>
         </Box>
       ) : null}
-      <Text bold color="green">
+      <Text bold color={theme.goldBright}>
         [Enter] unlock — run EVERY command freely for this session
       </Text>
       <Text dimColor>
         [s] session — allow similar until /clear
       </Text>
       {props.risk === "workspace_write" ? (
-        <Text color="yellow">
+        <Text color={theme.gold}>
           [space] session — allow all workspace writes until /clear
         </Text>
       ) : null}

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Box, Text, useInput } from "ink";
 import TextInput from "ink-text-input";
+import { theme } from "../theme.js";
 import type {
   LearnDecision,
   LearnItemView,
@@ -79,14 +80,14 @@ export function LearnCard(props: {
       <Box
         flexDirection="column"
         borderStyle="double"
-        borderColor="magenta"
+        borderColor={theme.border}
         paddingX={1}
       >
-        <Text bold color="magenta">
+        <Text bold color={theme.goldBright}>
           Edit title · Enter save · Esc cancel edit
         </Text>
         <Box>
-          <Text color="magenta" bold>
+          <Text color={theme.goldBright} bold>
             ›{" "}
           </Text>
           <TextInput
@@ -114,10 +115,10 @@ export function LearnCard(props: {
     <Box
       flexDirection="column"
       borderStyle="double"
-      borderColor="magenta"
+      borderColor={theme.border}
       paddingX={1}
     >
-      <Text bold color="magenta">
+      <Text bold color={theme.goldBright}>
         ◆ Anique learned something — add as skill/memory?
       </Text>
       <Text dimColor>
@@ -128,9 +129,9 @@ export function LearnCard(props: {
         const active = i === cursor;
         return (
           <Box key={it.id} flexDirection="column">
-            <Text color={active ? "cyan" : undefined} bold={active}>
+            <Text color={active ? theme.goldBright : undefined} bold={active}>
               {active ? "→" : " "} {on ? "[x]" : "[ ]"} {i + 1}.{" "}
-              <Text color="yellow">[{it.kind}]</Text> {it.title}
+              <Text color={theme.gold}>[{it.kind}]</Text> {it.title}
             </Text>
             <Text dimColor>
               {"     "}why: {it.reason.slice(0, 90)}
