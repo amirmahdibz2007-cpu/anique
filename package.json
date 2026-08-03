@@ -25,6 +25,7 @@
     "e2e:unlock": "tsx --experimental-sqlite scripts/e2e-unlock-flow.ts",
     "e2e:sudo": "tsx --experimental-sqlite scripts/e2e-sudo.ts",
     "e2e:hard": "tsx --experimental-sqlite scripts/e2e-hard.ts",
+    "test:scroll": "tsx --experimental-sqlite scripts/test-scroll-direction.ts",
     "postbuild": "node -e \"import('node:fs').then(fs=>fs.chmodSync('dist/index.js',0o755))\""
   },
   "engines": {

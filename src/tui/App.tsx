@@ -455,8 +455,8 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
       });
     if (key.shift && key.upArrow) scrollBy(page * 2);
     else if (key.shift && key.downArrow) scrollBy(-page * 2);
-    else if (inputEmpty && key.upArrow) scrollBy(-3);
-    else if (inputEmpty && key.downArrow) scrollBy(3);
+    else if (inputEmpty && key.upArrow) scrollBy(3); // ↑ = scroll up (older)
+    else if (inputEmpty && key.downArrow) scrollBy(-3); // ↓ = scroll down (newer)
   });
 
   const pushSystem = useCallback((text: string) => {
