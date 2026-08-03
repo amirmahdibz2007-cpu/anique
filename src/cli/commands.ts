@@ -730,6 +730,25 @@ export function registerCommands(program: Command): void {
       console.log(readMemoryFile(k));
     });
 
+  const findProjectMarker = (start: string): string | null => {
+    let dir = resolve(start);
+    while (true) {
+      const marker = join(dir, ".anique-project");
+      if (existsSync(marker)) return marker;
+      const parent = dirname(dir);
+      if (parent === dir) return null;
+      dir = parent;
+    }
+  };
+
+  const readProjectMarker = (marker: string): { profile: string } => {
+    const raw = JSON.parse(readFileSync(marker, "utf8")) as { profile?: unknown };
+    if (typeof raw.profile !== "string" || !raw.profile.trim()) {
+      throw new Error(`Invalid project marker: ${marker}`);
+    }
+    return { profile: raw.profile };
+  };
+
   program
     .command("project")
     .description("Project-scoped profiles (auto-switch per directory)")
@@ -760,13 +779,12 @@ export function registerCommands(program: Command): void {
       new Command("use")
         .description("Switch to the project profile for the current directory")
         .action(() => {
-          const dir = cwd();
-          const marker = join(dir, ".anique-project");
-          if (!existsSync(marker)) {
+          const marker = findProjectMarker(cwd());
+          if (!marker) {
             console.log(chalk.red("No project profile here. Run 'anique project init' first."));
             process.exit(1);
           }
-          const { profile } = JSON.parse(readFileSync(marker, "utf8"));
+          const { profile } = readProjectMarker(marker);
           useProfile(profile);
           console.log(chalk.green(`Switched to project profile: ${profile}`));
         }),
@@ -775,12 +793,9 @@ export function registerCommands(program: Command): void {
       new Command("auto")
         .description("Auto-detect and use project profile for current directory (for shell hooks)")
         .action(() => {
-          const dir = cwd();
-          const marker = join(dir, ".anique-project");
-          if (!existsSync(marker)) {
-            process.exit(0); // silent: no project profile
-          }
-          const { profile } = JSON.parse(readFileSync(marker, "utf8"));
+          const marker = findProjectMarker(cwd());
+          if (!marker) process.exit(0); // silent: no project profile
+          const { profile } = readProjectMarker(marker);
           useProfile(profile);
           // Print profile name so shell can show it in prompt
           console.log(profile);
@@ -790,13 +805,12 @@ export function registerCommands(program: Command): void {
       new Command("status")
         .description("Show current project profile status")
         .action(() => {
-          const dir = cwd();
-          const marker = join(dir, ".anique-project");
-          if (!existsSync(marker)) {
+          const marker = findProjectMarker(cwd());
+          if (!marker) {
             console.log(chalk.dim("No project profile in this directory"));
             return;
           }
-          const { profile } = JSON.parse(readFileSync(marker, "utf8"));
+          const { profile } = readProjectMarker(marker);
           const meta = getProfile(profile);
           if (!meta) {
             console.log(chalk.red(`Project profile "${profile}" not found`));

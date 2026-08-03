@@ -65,6 +65,7 @@ import {
   useProfile,
 } from "../profiles/agentProfiles.js";
 import { Header } from "./components/Header.js";
+import { MissionStrip } from "./components/MissionStrip.js";
 import { Feed, type FeedItem, feedMaxScroll } from "./components/Feed.js";
 import { StatusBar } from "./components/StatusBar.js";
 import { Prompt } from "./components/Prompt.js";
@@ -1241,10 +1242,22 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
         scrollInfo={scrollInfo}
       />
 
+      <MissionStrip
+        width={cols}
+        busy={busy}
+        status={status}
+        lens={lens}
+        workspace={workspace}
+        feedLength={feed.length}
+        project={profileName === "default" ? workspace.split("/").filter(Boolean).pop() : profileName}
+        hasModel={isModelReady(config)}
+        unlocked={isSessionUnlocked()}
+      />
+
       <Feed
         items={feed}
         streamBuf={streamBuf}
-        height={feedHeight}
+        height={Math.max(5, feedHeight - 3)}
         scrollLines={scrollLines}
         width={cols}
       />

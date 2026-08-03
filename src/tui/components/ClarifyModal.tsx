@@ -84,7 +84,11 @@ export function ClarifyModal(props: {
       paddingX={1}
     >
       <Text bold color={theme.goldBright}>
-        Clarify · question {idx + 1}/{props.questions.length}
+        ◆ Decision point · {idx + 1}/{props.questions.length}
+      </Text>
+      <Text dimColor>
+        {answers.length > 0 ? `✓ ${answers.length} answer${answers.length === 1 ? "" : "s"} locked · ` : ""}
+        Anique will use this decision directly
       </Text>
       <Text bold color={theme.text} wrap="wrap">
         {q.prompt}
