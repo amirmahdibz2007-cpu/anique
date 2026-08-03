@@ -10,3 +10,4 @@ backup_tui/
 .env
 .DS_Store
 *.tsbuildinfo
+.anique-project

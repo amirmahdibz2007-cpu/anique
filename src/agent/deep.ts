@@ -271,7 +271,7 @@ export async function prepareDeepPlan(opts: {
   | { kind: "plan"; plan: DeepPlan; clarifications: string }
 > {
   const { config, prompt, mode } = opts;
-  if (mode === "off") return { kind: "skip" };
+  if (mode !== "force") return { kind: "skip" }; // only /deep asks questions
 
   let clarifications = "";
   let triageRounds = 0;
@@ -293,16 +293,12 @@ export async function prepareDeepPlan(opts: {
       continue;
     }
 
-    if (mode === "auto" && triage.complexity === "simple" && triage.clarity === "clear") {
-      return { kind: "skip" };
-    }
-
     break;
   }
 
   let editNote: string | undefined;
   let planRounds = 0;
-  while (planRounds < 3) {
+  while (planRounds < 2) { // was 3, enough
     planRounds += 1;
     opts.onStatus?.(`planning · draft ${planRounds}`);
     let plan = await buildDeepPlan(config, prompt, clarifications, editNote);

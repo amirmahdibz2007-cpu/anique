@@ -1,14 +1,15 @@
 import { createInterface } from "node:readline";
 import { cwd } from "node:process";
-import { resolve, join, dirname } from "node:path";
+import { resolve, join, dirname, basename } from "node:path";
 import {
   writeFileSync,
   existsSync,
   copyFileSync,
   readdirSync,
+  readFileSync,
 } from "node:fs";
 import { fileURLToPath } from "node:url";
-import type { Command } from "commander";
+import { Command } from "commander";
 import chalk from "chalk";
 import {
   loadConfig,
@@ -730,21 +731,90 @@ export function registerCommands(program: Command): void {
     });
 
   program
-    .command("init-workspace")
-    .description("Write a starter ANIQUE.md in the current directory")
-    .action(() => {
-      const target = resolve(cwd(), "ANIQUE.md");
-      if (existsSync(target)) {
-        console.log(chalk.yellow("ANIQUE.md already exists"));
-        return;
-      }
-      writeFileSync(
-        target,
-        `# ANIQUE.md\n\nWorkspace conventions for Anique.\n\n## Goal\n\n## Stack\n\n## Do\n\n## Don't\n`,
-        "utf8",
-      );
-      console.log(chalk.green("Wrote ANIQUE.md"));
-    });
+    .command("project")
+    .description("Project-scoped profiles (auto-switch per directory)")
+    .addCommand(
+      new Command("init")
+        .description("Create a project profile for the current directory")
+        .option("-d, --description <text>", "Project description")
+        .action(async (opts) => {
+          const dir = cwd();
+          const name = basename(dir).toLowerCase().replace(/[^a-z0-9_-]/g, "-");
+          const marker = join(dir, ".anique-project");
+          if (existsSync(marker)) {
+            console.log(chalk.yellow("Project profile already initialized here"));
+            return;
+          }
+          const meta = createProfile({
+            name,
+            description: opts.description || `Project: ${basename(dir)}`,
+            clone: true,
+            cloneFrom: "default",
+          });
+          writeFileSync(marker, JSON.stringify({ profile: name }), "utf8");
+          console.log(chalk.green(`Created project profile "${name}" at ${meta.path}`));
+          console.log(chalk.dim(`Marker written to ${marker}`));
+        }),
+    )
+    .addCommand(
+      new Command("use")
+        .description("Switch to the project profile for the current directory")
+        .action(() => {
+          const dir = cwd();
+          const marker = join(dir, ".anique-project");
+          if (!existsSync(marker)) {
+            console.log(chalk.red("No project profile here. Run 'anique project init' first."));
+            process.exit(1);
+          }
+          const { profile } = JSON.parse(readFileSync(marker, "utf8"));
+          useProfile(profile);
+          console.log(chalk.green(`Switched to project profile: ${profile}`));
+        }),
+    )
+    .addCommand(
+      new Command("auto")
+        .description("Auto-detect and use project profile for current directory (for shell hooks)")
+        .action(() => {
+          const dir = cwd();
+          const marker = join(dir, ".anique-project");
+          if (!existsSync(marker)) {
+            process.exit(0); // silent: no project profile
+          }
+          const { profile } = JSON.parse(readFileSync(marker, "utf8"));
+          useProfile(profile);
+          // Print profile name so shell can show it in prompt
+          console.log(profile);
+        }),
+    )
+    .addCommand(
+      new Command("status")
+        .description("Show current project profile status")
+        .action(() => {
+          const dir = cwd();
+          const marker = join(dir, ".anique-project");
+          if (!existsSync(marker)) {
+            console.log(chalk.dim("No project profile in this directory"));
+            return;
+          }
+          const { profile } = JSON.parse(readFileSync(marker, "utf8"));
+          const meta = getProfile(profile);
+          if (!meta) {
+            console.log(chalk.red(`Project profile "${profile}" not found`));
+            return;
+          }
+          console.log(chalk.bold(`Project profile: ${profile}`));
+          console.log(chalk.dim(`  Path: ${meta.path}`));
+          console.log(chalk.dim(`  Description: ${meta.description || "(none)"}`));
+          console.log(chalk.dim(`  Created: ${meta.createdAt}`));
+          const current = currentProfileName();
+          if (current === profile) {
+            console.log(chalk.green("  Status: ACTIVE"));
+          } else {
+            console.log(chalk.yellow(`  Status: INACTIVE (current: ${current})`));
+            console.log(chalk.dim("  Run 'anique project use' to activate"));
+          }
+        }),
+    );
 }
 
 async function runRepl(state: {
