@@ -496,9 +496,9 @@ PRs welcome! Please:
 
 ---
 
-## 🤖 Built with AI
+## 🤖 AI-assisted
 
-This tool was **built with AI assistance** — human direction and taste, AI for coding, design iteration, and documentation. Review the code yourself; treat it like any other open-source project.
+Anique was **written by humans**, with AI used as a helper for coding, design iteration, and docs — not as the sole author. Review the code yourself; treat it like any other open-source project.
 
 ---
 
@@ -980,9 +980,9 @@ Anique از مأموریت‌ها از طریق **کارت‌های یادگیر
 
 ---
 
-## 🤖 ساخته‌شده با کمک هوش مصنوعی
+## 🤖 با کمک هوش مصنوعی
 
-این ابزار **با کمک هوش مصنوعی نوشته شده** — جهت‌دهی و سلیقهٔ انسانی، و کمک AI در کدنویسی، طراحی و مستندات. کد را خودتان بررسی کنید؛ مثل هر پروژهٔ متن‌باز دیگر با آن برخورد کنید.
+Anique را **انسان نوشته**؛ هوش مصنوعی فقط در کدنویسی، طراحی و مستندات کمک کرده — نویسندهٔ اصلی نبوده. کد را خودتان بررسی کنید؛ مثل هر پروژهٔ متن‌باز دیگر با آن برخورد کنید.
 
 ---
 
