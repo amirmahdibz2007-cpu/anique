@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Box, Text, useInput } from "ink";
 import type { SessionRow } from "../../store/db.js";
 import { theme } from "../theme.js";
@@ -23,10 +23,28 @@ export function SessionPicker(props: {
   onResume: (session: SessionRow) => void;
   onNew: () => void;
 }): React.ReactElement {
-  const [cursor, setCursor] = useState(props.sessions.length > 0 ? 1 : 0);
-  const max = props.sessions.length;
+  const [query, setQuery] = useState("");
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return props.sessions;
+    return props.sessions.filter(
+      (s) =>
+        s.title.toLowerCase().includes(q) ||
+        s.lens.toLowerCase().includes(q) ||
+        s.id.toLowerCase().includes(q) ||
+        s.workspace.toLowerCase().includes(q),
+    );
+  }, [props.sessions, query]);
 
-  useInput((_input, key) => {
+  const [cursor, setCursor] = useState(filtered.length > 0 ? 1 : 0);
+  const max = filtered.length;
+
+  // Keep cursor in range when filter shrinks
+  React.useEffect(() => {
+    setCursor((c) => Math.min(c, max));
+  }, [max]);
+
+  useInput((input, key) => {
     if (key.upArrow) {
       setCursor((c) => Math.max(0, c - 1));
       return;
@@ -40,22 +58,39 @@ export function SessionPicker(props: {
         props.onNew();
         return;
       }
-      const ses = props.sessions[cursor - 1];
+      const ses = filtered[cursor - 1];
       if (ses) props.onResume(ses);
       return;
     }
-    const n = Number(_input);
-    if (_input === "n" || _input === "N" || n === 0) {
+    if (key.escape) {
+      if (query) {
+        setQuery("");
+        return;
+      }
+    }
+    if (key.backspace || key.delete) {
+      setQuery((q) => q.slice(0, -1));
+      setCursor(1);
+      return;
+    }
+    const n = Number(input);
+    if (!query && (input === "n" || input === "N" || n === 0)) {
       props.onNew();
       return;
     }
-    if (n >= 1 && n <= props.sessions.length) {
-      props.onResume(props.sessions[n - 1]!);
+    if (!query && n >= 1 && n <= filtered.length) {
+      props.onResume(filtered[n - 1]!);
+      return;
+    }
+    // Type to search (printable)
+    if (input && !key.ctrl && !key.meta && input.length === 1 && input >= " ") {
+      setQuery((q) => q + input);
+      setCursor(1);
     }
   });
 
   const window = 12;
-  const totalRows = 1 + props.sessions.length;
+  const totalRows = 1 + filtered.length;
   const start = Math.max(
     0,
     Math.min(cursor - 4, Math.max(0, totalRows - window)),
@@ -77,7 +112,7 @@ export function SessionPicker(props: {
         ),
       });
     } else {
-      const s = props.sessions[i - 1]!;
+      const s = filtered[i - 1]!;
       rows.push({
         key: s.id,
         index: i,
@@ -99,19 +134,30 @@ export function SessionPicker(props: {
     <Box
       flexDirection="column"
       borderStyle="round"
-      borderColor={theme.border}
+      borderColor={theme.borderModal}
       paddingX={1}
       width={props.width}
-      height={Math.min(20, 6 + rows.length)}
+      height={Math.min(22, 8 + rows.length)}
     >
-      <Text bold color={theme.primaryBright}>
+      <Text bold color={theme.secondaryBright}>
         ◈ continue or start fresh
       </Text>
       <Text color={theme.textDim}>
-        ↑↓ Enter · n = new · number = jump
+        ↑↓ Enter · type to search · Esc clear · n = new
       </Text>
-      {props.sessions.length === 0 ? (
-        <Text color={theme.textDim}>no past chats yet</Text>
+      {query ? (
+        <Text color={theme.primary}>
+          ⌕ {query}
+          <Text color={theme.textDim}>
+            {" "}
+            · {filtered.length}/{props.sessions.length}
+          </Text>
+        </Text>
+      ) : null}
+      {filtered.length === 0 ? (
+        <Text color={theme.textDim}>
+          {props.sessions.length === 0 ? "no past chats yet" : "no matches"}
+        </Text>
       ) : null}
       {rows.map((row) => {
         const active = row.index === cursor;
@@ -121,10 +167,8 @@ export function SessionPicker(props: {
             color={active ? theme.primaryBright : undefined}
             bold={active}
           >
-            {active ? "›" : " "}
-            {" "}
-            {row.index === 0 ? "n" : String(row.index).padStart(2)}.{" "}
-            {row.label}
+            {active ? "▸" : " "}{" "}
+            {row.index === 0 ? "n" : String(row.index).padStart(2)}. {row.label}
           </Text>
         );
       })}

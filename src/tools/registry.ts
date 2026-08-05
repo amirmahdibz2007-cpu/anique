@@ -193,7 +193,61 @@ const handlers: Record<string, ToolHandler> = {
       return { ok: false, output: `File not found: ${path}` };
     }
     const current = readFileSync(path, "utf8");
-    if (!current.includes(oldText)) {
+    let matchIdx = current.indexOf(oldText);
+    let matched = oldText;
+    // Resilient match: try normalized newlines / trimmed trailing spaces per line
+    if (matchIdx < 0 && oldText.trim()) {
+      const norm = (s: string) =>
+        s.replace(/\r\n/g, "\n").replace(/[ \t]+$/gm, "");
+      const curN = norm(current);
+      const oldN = norm(oldText);
+      const ni = curN.indexOf(oldN);
+      if (ni >= 0) {
+        // Map back approximately by searching a unique first line
+        const firstLine = oldText.split("\n").find((l) => l.trim()) ?? oldText.slice(0, 40);
+        matchIdx = current.indexOf(firstLine);
+        if (matchIdx >= 0 && curN.includes(oldN)) {
+          matched = oldText;
+          // Prefer exact normalized replace on normalized content
+          const risk = classifyWrite(path, ctx.workspace);
+          if (!(await gate(risk, ctx, `patch ${path}`, { tool: "apply_patch" }))) {
+            return { ok: false, output: "Patch denied by user.", risk, denied: true };
+          }
+          const { savePriorVersion } = await import("../versions/vault.js");
+          const vid = savePriorVersion(path, "apply_patch");
+          const next = curN.replace(oldN, norm(newText));
+          writeFileSync(path, next, "utf8");
+          return {
+            ok: true,
+            output: `Patched ${path} (normalized match)${vid ? ` · prior saved ${vid}` : ""}`,
+            risk,
+          };
+        }
+      }
+      // Helpful context for the model
+      const needle = oldText.slice(0, 80).replace(/\n/g, "\\n");
+      const nearby = current
+        .split("\n")
+        .map((l, i) => ({ l, i }))
+        .filter(({ l }) =>
+          oldText
+            .split("\n")
+            .some((ol) => ol.trim() && l.includes(ol.trim().slice(0, 40))),
+        )
+        .slice(0, 6)
+        .map(({ l, i }) => `  L${i + 1}: ${l.slice(0, 120)}`)
+        .join("\n");
+      return {
+        ok: false,
+        output: [
+          "old_text not found in file (exact match required).",
+          `Looking for: ${needle}${oldText.length > 80 ? "…" : ""}`,
+          nearby ? `Nearby lines:\n${nearby}` : "No nearby similar lines found.",
+          "Tip: re-read the file and copy exact text including whitespace.",
+        ].join("\n"),
+      };
+    }
+    if (matchIdx < 0) {
       return { ok: false, output: "old_text not found in file (exact match required)." };
     }
     const risk = classifyWrite(path, ctx.workspace);
@@ -202,7 +256,7 @@ const handlers: Record<string, ToolHandler> = {
     }
     const { savePriorVersion } = await import("../versions/vault.js");
     const vid = savePriorVersion(path, "apply_patch");
-    const next = current.replace(oldText, newText);
+    const next = current.replace(matched, newText);
     writeFileSync(path, next, "utf8");
     return {
       ok: true,
@@ -215,13 +269,60 @@ const handlers: Record<string, ToolHandler> = {
     const pattern = String(args.pattern ?? "");
     const pathArg = args.path ? String(args.path) : ".";
     const root = resolveInWorkspace(ctx.workspace, pathArg);
-    const include = args.include ? String(args.include) : "**/*";
+    const include = args.include ? String(args.include) : "";
+    const caseInsensitive = Boolean(args.case_insensitive);
+
+    // Prefer ripgrep when available
+    const rgCheck = spawnSync("rg", ["--version"], { encoding: "utf8" });
+    if (rgCheck.status === 0) {
+      const rgArgs = [
+        "--line-number",
+        "--no-heading",
+        "--color",
+        "never",
+        "--max-count",
+        "80",
+        ...(caseInsensitive ? ["-i"] : []),
+        ...(include ? ["--glob", include] : []),
+        "-e",
+        pattern,
+        root,
+      ];
+      const r = spawnSync("rg", rgArgs, {
+        cwd: ctx.workspace,
+        encoding: "utf8",
+        maxBuffer: 2_000_000,
+        timeout: 30_000,
+      });
+      // rg exit 1 = no matches; 2 = error
+      if (r.status === 0 || r.status === 1) {
+        const out = (r.stdout || "").trim();
+        // Relativize absolute paths when possible
+        const lines = out
+          ? out
+              .split("\n")
+              .slice(0, 80)
+              .map((line) => {
+                if (line.startsWith(ctx.workspace + "/")) {
+                  return relative(ctx.workspace, line.split(":")[0]!) +
+                    ":" +
+                    line.slice(line.indexOf(":") + 1);
+                }
+                return line;
+              })
+              .join("\n")
+          : "No matches.";
+        return { ok: true, output: lines || "No matches.", risk: "safe" };
+      }
+      // fall through to JS impl on rg error
+    }
+
     let files: string[] = [];
     try {
       const st = existsSync(root) ? statSync(root) : null;
       if (st?.isFile()) files = [root];
       else {
-        files = globSync(include, {
+        files = globSync(include || "**/*", {
           cwd: root,
           nodir: true,
           absolute: true,
@@ -234,7 +335,7 @@ const handlers: Record<string, ToolHandler> = {
     }
     let re: RegExp;
     try {
-      re = new RegExp(pattern, args.case_insensitive ? "i" : "");
+      re = new RegExp(pattern, caseInsensitive ? "i" : "");
     } catch {
       return { ok: false, output: `Invalid regex: ${pattern}` };
     }
@@ -379,7 +480,7 @@ const handlers: Record<string, ToolHandler> = {
         body: content,
         lens: ctx.lens,
       });
-      if (ctx.lens === "atelier") {
+      if (ctx.lens === "atelier" || ctx.lens === "code") {
         try {
           const { appendProjectMemory } = await import(
             "../learn/projectMemory.js"
@@ -566,8 +667,44 @@ const handlers: Record<string, ToolHandler> = {
     if (!(await gate("dangerous", ctx, `git commit: ${message}`))) {
       return { ok: false, output: "Commit denied.", denied: true };
     }
+    // Safer staging: only explicit paths, or already-staged files. Never git add -A by default.
+    const pathsRaw = args.paths ?? args.files;
+    const paths: string[] = Array.isArray(pathsRaw)
+      ? pathsRaw.map(String).filter(Boolean)
+      : typeof pathsRaw === "string" && pathsRaw.trim()
+        ? pathsRaw.split(/[\s,]+/).filter(Boolean)
+        : [];
+    const stagedOnly = Boolean(args.staged_only ?? args.stagedOnly);
     try {
-      execSync("git add -A", { cwd: ctx.workspace, encoding: "utf8" });
+      if (paths.length) {
+        for (const p of paths) {
+          const abs = resolveInWorkspace(ctx.workspace, p);
+          execSync(`git add -- ${JSON.stringify(abs)}`, {
+            cwd: ctx.workspace,
+            encoding: "utf8",
+          });
+        }
+      } else if (!stagedOnly) {
+        // Default: require paths or staged_only — refuse silent add -A
+        const staged = execSync("git diff --cached --name-only", {
+          cwd: ctx.workspace,
+          encoding: "utf8",
+        }).trim();
+        if (!staged) {
+          return {
+            ok: false,
+            output:
+              "git_commit refused: pass paths[] to stage, or staged_only:true with already-staged files. Never uses git add -A.",
+          };
+        }
+      }
+      const stillStaged = execSync("git diff --cached --name-only", {
+        cwd: ctx.workspace,
+        encoding: "utf8",
+      }).trim();
+      if (!stillStaged) {
+        return { ok: false, output: "Nothing staged to commit." };
+      }
       execSync(`git commit -m ${JSON.stringify(message)}`, {
         cwd: ctx.workspace,
         encoding: "utf8",
@@ -576,7 +713,11 @@ const handlers: Record<string, ToolHandler> = {
         cwd: ctx.workspace,
         encoding: "utf8",
       });
-      return { ok: true, output: `Committed: ${log.trim()}`, risk: "dangerous" };
+      return {
+        ok: true,
+        output: `Committed: ${log.trim()}\nFiles:\n${stillStaged}`,
+        risk: "dangerous",
+      };
     } catch (err) {
       return { ok: false, output: String(err) };
     }
@@ -998,11 +1139,21 @@ export function getToolDefinitions(names: string[]): ToolDefinition[] {
       type: "function",
       function: {
         name: "git_commit",
-        description: "Stage all and create a git commit (requires approval).",
+        description:
+          "Create a git commit. Pass paths[] to stage specific files, or staged_only:true for already-staged files. Never runs git add -A.",
         parameters: {
           type: "object",
           properties: {
             message: { type: "string" },
+            paths: {
+              type: "array",
+              items: { type: "string" },
+              description: "Files to stage before commit",
+            },
+            staged_only: {
+              type: "boolean",
+              description: "Commit only what is already staged",
+            },
           },
           required: ["message"],
         },

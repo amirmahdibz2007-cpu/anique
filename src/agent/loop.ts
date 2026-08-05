@@ -34,8 +34,23 @@ import {
   userFacingAnswer,
   RETRY_DIRECT_ANSWER,
 } from "./answerSanitize.js";
+import { runPostEditVerify } from "./postEditVerify.js";
 
 export type Rhythm = "plan" | "act";
+
+const READ_ONLY_TOOLS = new Set([
+  "read_file",
+  "grep",
+  "glob",
+  "git_status",
+  "git_diff",
+  "memory_read",
+  "recall",
+  "todo_list",
+  "skill_load",
+]);
+
+const EDIT_TOOLS = new Set(["write_file", "apply_patch"]);
 
 export interface AgentRunOptions {
   config: AniqueConfig;
@@ -65,6 +80,8 @@ export interface AgentRunResult {
   steps: number;
   messages: ChatMessage[];
   toolCallCount: number;
+  /** Count of tools that returned ok:true (honest evidence). */
+  toolOkCount: number;
   usageText: string;
   aborted: boolean;
   deepVerifyOk?: boolean | null;
@@ -83,7 +100,7 @@ async function maybeLearn(
     userMessage,
     finalText: result.finalText,
     toolCallCount: result.toolCallCount,
-    toolOkCount: result.toolCallCount,
+    toolOkCount: result.toolOkCount,
     steps: result.steps,
     aborted: result.aborted,
     deepVerifyOk: result.deepVerifyOk ?? null,
@@ -118,6 +135,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
       config: opts.config,
       prompt: userMessage,
       mode: deepMode,
+      workspace: opts.workspace,
       onStatus: opts.onDeepStatus,
     });
 
@@ -147,6 +165,7 @@ export async function runAgent(opts: AgentRunOptions): Promise<AgentRunResult> {
           { role: "assistant", content: msg },
         ],
         toolCallCount: 0,
+        toolOkCount: 0,
         usageText: "",
         aborted: true,
       };
@@ -210,6 +229,7 @@ async function runDeepSequence(
   );
   let totalSteps = 0;
   let totalTools = 0;
+  let totalOk = 0;
   let aborted = false;
   let deepVerifyOk: boolean | null = null;
   const summaries: string[] = [];
@@ -246,6 +266,7 @@ async function runDeepSequence(
 
     totalSteps += result.steps;
     totalTools += result.toolCallCount;
+    totalOk += result.toolOkCount;
     usageParts.push(result.usageText);
     history = result.messages.filter((m) => m.role !== "system");
     summaries.push(`### ${task.title}\n${result.finalText || "(no text)"}`);
@@ -259,7 +280,7 @@ async function runDeepSequence(
 
   if (!aborted) {
     opts.onDeepStatus?.("deep · verifying");
-    const verdict = await verifyDeepDone(opts.config, plan, summaries);
+    let verdict = await verifyDeepDone(opts.config, plan, summaries);
     deepVerifyOk = verdict.ok && (!verdict.gaps || verdict.gaps.length === 0);
     if (!verdict.ok) {
       deepVerifyOk = false;
@@ -275,10 +296,21 @@ async function runDeepSequence(
       });
       totalSteps += repair.steps;
       totalTools += repair.toolCallCount;
+      totalOk += repair.toolOkCount;
       history = repair.messages.filter((m) => m.role !== "system");
       summaries.push(`### Repair\n${repair.finalText || ""}`);
-      if (repair.aborted) aborted = true;
-      // Re-verify lightly: still mark false unless we want second verify — keep false after gaps
+      if (repair.aborted) {
+        aborted = true;
+      } else {
+        opts.onDeepStatus?.("deep · re-verify");
+        verdict = await verifyDeepDone(opts.config, plan, summaries);
+        deepVerifyOk = verdict.ok && (!verdict.gaps || verdict.gaps.length === 0);
+        if (!deepVerifyOk) {
+          push("deep re-verify gaps", verdict.gaps.join("; "));
+        } else {
+          push("deep re-verify ok");
+        }
+      }
     } else {
       deepVerifyOk = true;
     }
@@ -304,6 +336,7 @@ async function runDeepSequence(
         { role: "assistant", content: finalText },
       ],
       toolCallCount: totalTools,
+      toolOkCount: totalOk,
       usageText,
       aborted,
       deepVerifyOk,
@@ -317,6 +350,7 @@ async function runDeepSequence(
     steps: totalSteps,
     messages: history,
     toolCallCount: totalTools,
+    toolOkCount: totalOk,
     usageText: usageParts.join("\n"),
     aborted: true,
     deepVerifyOk: false,
@@ -353,6 +387,34 @@ async function runAgentPass(opts: AgentRunOptions): Promise<AgentRunResult> {
   }
   push("rhythm", `rhythm=${rhythm} lens=${lens.id} model=${opts.config.model}`);
   push("user", opts.userMessage.slice(0, 200));
+
+  // Auto-ingest project map when empty/stale for coding lenses
+  if (
+    (lens.id === "code" || lens.id === "atelier" || lens.private) &&
+    lens.tools.includes("project_ingest")
+  ) {
+    try {
+      const { isProjectMapStale } = await import("./contextPack.js");
+      if (isProjectMapStale(opts.workspace)) {
+        push("system", "auto-ingest · project map empty/stale");
+        const ingestCtx: ToolContext = {
+          workspace: opts.workspace,
+          lens: lens.id,
+          approvalMode: opts.config.approvalMode,
+          allowlistBash: opts.config.allowlistBash,
+          rhythm,
+          signal: opts.signal,
+        };
+        const ing = await runTool("project_ingest", "{}", ingestCtx);
+        push(
+          "system",
+          `auto-ingest → ${ing.ok ? "ok" : "err"} · ${ing.output.slice(0, 120)}`,
+        );
+      }
+    } catch {
+      /* non-fatal */
+    }
+  }
 
   const system = assembleSystemPrompt({
     lens,
@@ -414,10 +476,14 @@ async function runAgentPass(opts: AgentRunOptions): Promise<AgentRunResult> {
 
   let steps = 0;
   let toolCallCount = 0;
+  let toolOkCount = 0;
   let finalText = "";
   let aborted = false;
   let directRetryUsed = false;
+  let postEditVerified = false;
+  const failCounts = new Map<string, number>();
   const maxSteps = opts.config.maxSteps ?? 40;
+  const codingLens = lens.id === "code" || lens.id === "atelier" || Boolean(lens.private);
 
   while (steps < maxSteps) {
     if (opts.signal?.aborted) {
@@ -452,10 +518,14 @@ async function runAgentPass(opts: AgentRunOptions): Promise<AgentRunResult> {
         if (!quiet) process.stdout.write(chunk.content);
         opts.onToken?.(chunk.content);
       }
+      if (chunk.type === "error" && chunk.error) {
+        push("system", `stream error · ${chunk.error.slice(0, 160)}`);
+      }
       result = await stream.next();
     }
     if (aborted) {
       push("system", "interrupted during stream");
+      if (streamed.trim()) finalText = streamed;
       break;
     }
     if (streamed && !quiet) process.stdout.write("\n");
@@ -463,6 +533,7 @@ async function runAgentPass(opts: AgentRunOptions): Promise<AgentRunResult> {
     if (!result.done) {
       aborted = true;
       push("system", "stream ended unexpectedly");
+      if (streamed.trim()) finalText = streamed;
       break;
     }
 
@@ -529,23 +600,85 @@ async function runAgentPass(opts: AgentRunOptions): Promise<AgentRunResult> {
       break;
     }
 
-    for (const call of calls) {
-      if (opts.signal?.aborted) {
-        aborted = true;
-        break;
-      }
-      toolCallCount += 1;
+    // Parallelize independent read-only tools; run writes/side-effects sequentially
+    const canParallel =
+      calls.length > 1 && calls.every((c) => READ_ONLY_TOOLS.has(c.function.name));
+
+    type CallOutcome = {
+      call: (typeof calls)[0];
+      name: string;
+      args: string;
+      toolResult: Awaited<ReturnType<typeof runTool>>;
+    };
+
+    const runOne = async (call: (typeof calls)[0]): Promise<CallOutcome> => {
       const name = call.function.name;
       const args = call.function.arguments;
       push("tool", `${name}`, args.slice(0, 400));
-
       const toolResult = await runTool(name, args, toolCtx);
-      const output = toolResult.output.slice(0, 50_000);
+      return { call, name, args, toolResult };
+    };
+
+    let outcomes: CallOutcome[];
+    if (canParallel) {
+      outcomes = await Promise.all(calls.map(runOne));
+    } else {
+      outcomes = [];
+      for (const call of calls) {
+        if (opts.signal?.aborted) {
+          aborted = true;
+          break;
+        }
+        outcomes.push(await runOne(call));
+      }
+    }
+
+    let circuitTripped = false;
+    for (const { call, name, args, toolResult } of outcomes) {
+      toolCallCount += 1;
+      if (toolResult.ok) toolOkCount += 1;
+
+      const failKey = `${name}::${args.slice(0, 200)}`;
+      if (!toolResult.ok && !toolResult.denied) {
+        const n = (failCounts.get(failKey) ?? 0) + 1;
+        failCounts.set(failKey, n);
+        if (n >= 3) circuitTripped = true;
+      } else if (toolResult.ok) {
+        failCounts.delete(failKey);
+      }
+
+      let output = toolResult.output.slice(0, 50_000);
       push(
         "tool",
         `${name} → ${toolResult.ok ? "ok" : toolResult.denied ? "denied" : "err"}`,
         output.slice(0, 400),
       );
+
+      // Post-edit verify once per turn for coding lenses
+      if (
+        codingLens &&
+        toolResult.ok &&
+        EDIT_TOOLS.has(name) &&
+        !postEditVerified &&
+        !aborted
+      ) {
+        postEditVerified = true;
+        const v = runPostEditVerify(opts.workspace);
+        if (v.ran) {
+          const verifyNote = [
+            "",
+            "--- post-edit verify ---",
+            `command: ${v.command}`,
+            `result: ${v.ok ? "PASS" : "FAIL"}`,
+            v.output.slice(0, 4000),
+          ].join("\n");
+          output = (output + verifyNote).slice(0, 50_000);
+          push(
+            "system",
+            `post-edit verify · ${v.ok ? "pass" : "fail"} · ${v.command}`,
+          );
+        }
+      }
 
       messages.push({
         role: "tool",
@@ -559,6 +692,16 @@ async function runAgentPass(opts: AgentRunOptions): Promise<AgentRunResult> {
         content: output,
         toolName: name,
         toolCallId: call.id,
+      });
+    }
+
+    if (circuitTripped) {
+      push("system", "circuit breaker · same tool+args failed 3×");
+      messages.push({
+        role: "user",
+        content:
+          "CIRCUIT BREAKER: the same tool with the same arguments failed 3 times. " +
+          "Stop repeating it. Change approach (different args, different tool, or ask the user) or stop.",
       });
     }
     if (aborted) break;
@@ -598,6 +741,7 @@ async function runAgentPass(opts: AgentRunOptions): Promise<AgentRunResult> {
     steps,
     messages,
     toolCallCount,
+    toolOkCount,
     usageText,
     aborted,
   };

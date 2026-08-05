@@ -22,6 +22,7 @@ import {
   type AniqueConfig,
   type ProviderId,
 } from "../config/index.js";
+import { resolveRuntimeConfig } from "../config/runtime.js";
 import { describeLenses, getLens, listLensIds } from "../lenses/index.js";
 import { runAgent, type Rhythm } from "../agent/loop.js";
 import {
@@ -63,6 +64,15 @@ import { resetDb } from "../store/db.js";
 import { compactHistory, formatContextBar } from "../agent/usage.js";
 import { formatTodos } from "../agent/todos.js";
 import { undoLastSnapshot } from "../agent/undo.js";
+import {
+  findProjectForPath,
+  listNamedProjects,
+  createNamedProject,
+  bindPathToProject,
+  renameNamedProject,
+  unbindPath,
+} from "../learn/namedProjects.js";
+import { readProjectMemory, projectStoreDir } from "../learn/projectMemory.js";
 
 function banner(lens: string, rhythm: Rhythm, workspace: string): void {
   const profile = currentProfileName();
@@ -831,6 +841,104 @@ export function registerCommands(program: Command): void {
           }
         }),
     );
+
+  program
+    .command("projects")
+    .description(
+      "Named projects: own memory + chat history per folder, plus default memory (lighter than 'project')",
+    )
+    .addCommand(
+      new Command("new")
+        .argument("<name>", "Project name")
+        .description("Create a named project bound to the current directory")
+        .action((name: string) => {
+          const dir = cwd();
+          try {
+            const oldDir = projectStoreDir(dir);
+            const proj = createNamedProject(name, dir, { migrateFromHashDir: oldDir });
+            console.log(chalk.green(`Created project "${proj.name}" (${proj.id}) bound to ${dir}`));
+          } catch (err) {
+            console.log(chalk.red(err instanceof Error ? err.message : String(err)));
+            process.exitCode = 1;
+          }
+        }),
+    )
+    .addCommand(
+      new Command("bind")
+        .argument("<name>", "Existing project name or id")
+        .description("Bind the current directory to an existing named project")
+        .action((name: string) => {
+          try {
+            const proj = bindPathToProject(name, cwd());
+            console.log(chalk.green(`Bound ${cwd()} → project "${proj.name}" (${proj.id})`));
+          } catch (err) {
+            console.log(chalk.red(err instanceof Error ? err.message : String(err)));
+            process.exitCode = 1;
+          }
+        }),
+    )
+    .addCommand(
+      new Command("unbind")
+        .description("Unbind the current directory from its named project")
+        .action(() => {
+          const removed = unbindPath(cwd());
+          console.log(
+            removed
+              ? chalk.green(`Unbound from "${removed.name}"`)
+              : chalk.dim("This directory wasn't bound to a project."),
+          );
+        }),
+    )
+    .addCommand(
+      new Command("rename")
+        .argument("<name>", "New name")
+        .description("Rename the named project bound to the current directory")
+        .action((name: string) => {
+          const proj = findProjectForPath(cwd());
+          if (!proj) {
+            console.log(chalk.red("No project bound here."));
+            process.exitCode = 1;
+            return;
+          }
+          const updated = renameNamedProject(proj.id, name);
+          console.log(chalk.green(`Renamed to "${updated.name}"`));
+        }),
+    )
+    .addCommand(
+      new Command("status")
+        .description("Show the named project bound to the current directory")
+        .action(() => {
+          const proj = findProjectForPath(cwd());
+          if (!proj) {
+            console.log(chalk.dim(`No named project bound to ${cwd()}`));
+            return;
+          }
+          const mem = readProjectMemory(cwd());
+          console.log(chalk.bold(`Project: ${proj.name} (${proj.id})`));
+          console.log(chalk.dim(`  Bound directories:`));
+          for (const p of proj.paths) console.log(chalk.dim(`    - ${p}`));
+          console.log(
+            chalk.dim(`  Durable memory: ${mem.trim() ? `${mem.trim().length} chars` : "(empty)"}`),
+          );
+        }),
+    )
+    .addCommand(
+      new Command("list")
+        .description("List all named projects")
+        .action(() => {
+          const all = listNamedProjects();
+          if (!all.length) {
+            console.log(chalk.dim("No named projects yet. Try: anique projects new <name>"));
+            return;
+          }
+          for (const p of all) {
+            console.log(
+              `${chalk.cyan(p.id.padEnd(16))} ${chalk.bold(`"${p.name}"`)} — ${p.paths.length} dir(s)`,
+            );
+            for (const path of p.paths) console.log(chalk.dim(`    - ${path}`));
+          }
+        }),
+    );
 }
 
 async function runRepl(state: {
@@ -842,8 +950,29 @@ async function runRepl(state: {
   let sessionId: string | undefined = state.sessionId;
   let history: ChatMessage[] = [];
   let lastAssistant = "";
+  let lastUserPrompt = "";
   const modelsFlow = new ModelsFlow();
   let modelsMode = false;
+
+  if (sessionId) {
+    const { bootstrapSession } = await import("./sessionBootstrap.js");
+    const boot = bootstrapSession(sessionId);
+    if (boot) {
+      history = boot.history;
+      lastAssistant = boot.lastAssistant;
+      lastUserPrompt = boot.lastUserPrompt;
+      state.lens = boot.session.lens;
+      state.workspace = boot.session.workspace;
+      console.log(
+        chalk.dim(
+          `resumed ${sessionId} · ${boot.history.length} history msgs · ${boot.session.title}\n`,
+        ),
+      );
+    } else {
+      console.log(chalk.yellow(`session ${sessionId} not found — starting fresh\n`));
+      sessionId = undefined;
+    }
+  }
 
   banner(state.lens, state.rhythm, state.workspace);
   if (!isModelReady()) {
@@ -891,6 +1020,64 @@ async function runRepl(state: {
         }
 
         if (input.startsWith("/")) {
+          const { dispatchSharedSlash } = await import("./slashCommands.js");
+          const shared = await dispatchSharedSlash(input, {
+            host: "classic",
+            lens: state.lens,
+            workspace: state.workspace,
+            rhythm: state.rhythm,
+            lastUserPrompt,
+            historyUserPrompt: [...history]
+              .reverse()
+              .find((m) => m.role === "user")?.content ?? "",
+          });
+          if (shared.kind === "quit") {
+            rl.close();
+            return;
+          }
+          if (shared.kind === "ok") {
+            for (const line of shared.lines) {
+              if (line.startsWith("__REDO_EDIT__:")) continue;
+              console.log(line);
+            }
+            if (shared.patch?.lens) state.lens = shared.patch.lens;
+            if (shared.patch?.rhythm) state.rhythm = shared.patch.rhythm;
+            // For redo preview in classic: print tip to /redo!
+            rl.prompt();
+            return;
+          }
+          if (shared.kind === "mission") {
+            if (!isModelReady()) {
+              console.log(chalk.yellow("model not set — /models first"));
+              rl.prompt();
+              return;
+            }
+            lastUserPrompt = shared.prompt;
+            const result = await runAgent({
+              config: resolveRuntimeConfig(),
+              lensId: state.lens,
+              workspace: state.workspace,
+              userMessage: shared.prompt,
+              rhythm: state.rhythm,
+              sessionId,
+              history: shared.redo
+                ? (() => {
+                    const h = [...history];
+                    while (h.length && h[h.length - 1]!.role !== "user") h.pop();
+                    if (h.length && h[h.length - 1]!.role === "user") h.pop();
+                    return h;
+                  })()
+                : history,
+              deepMode: shared.deepMode,
+            });
+            sessionId = result.sessionId;
+            history = result.messages.filter((m) => m.role !== "system");
+            lastAssistant = result.finalText;
+            if (result.finalText) console.log(result.finalText);
+            rl.prompt();
+            return;
+          }
+
           const [cmd, ...rest] = input.slice(1).split(/\s+/);
           switch (cmd) {
             case "help":
@@ -935,7 +1122,7 @@ async function runRepl(state: {
               }
               rl.pause();
               const result = await runAgent({
-                config: loadConfig(),
+                config: resolveRuntimeConfig(),
                 lensId: state.lens,
                 workspace: state.workspace,
                 userMessage: p,
@@ -1063,7 +1250,7 @@ async function runRepl(state: {
               if (evolvePrompt) {
                 rl.pause();
                 const result = await runAgent({
-                  config: loadConfig(),
+                  config: resolveRuntimeConfig(),
                   lensId: "evolve",
                   workspace: state.workspace,
                   userMessage: evolvePrompt,
@@ -1115,7 +1302,7 @@ async function runRepl(state: {
               rl.pause();
               try {
                 const lr = await runLearningPass({
-                  config: loadConfig(),
+                  config: resolveRuntimeConfig(),
                   pack,
                   force: true,
                   onEvent: (ev) => console.log(chalk.magenta(ev.summary)),
@@ -1182,7 +1369,7 @@ async function runRepl(state: {
               rl.pause();
               try {
                 const result = await runAgent({
-                  config: loadConfig(),
+                  config: resolveRuntimeConfig(),
                   lensId: state.lens,
                   workspace: state.workspace,
                   userMessage: body,
@@ -1255,7 +1442,7 @@ async function runRepl(state: {
               rl.pause();
               try {
                 const result = await runAgent({
-                  config: loadConfig(),
+                  config: resolveRuntimeConfig(),
                   lensId: state.lens,
                   workspace: state.workspace,
                   userMessage: lastUser,
@@ -1335,7 +1522,7 @@ async function runRepl(state: {
 
         rl.pause();
         const result = await runAgent({
-          config: loadConfig(),
+          config: resolveRuntimeConfig(),
           lensId: state.lens,
           workspace: state.workspace,
           userMessage: input,

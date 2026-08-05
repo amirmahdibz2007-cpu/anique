@@ -14,15 +14,15 @@ export function Prompt(props: {
   width: number;
 }): React.ReactElement {
   const placeholder = props.busy
-    ? "working… (Esc)"
+    ? "working… (Esc to interrupt)"
     : props.modelsMode
-      ? "pick…"
+      ? "pick a model…"
       : props.modelReady
-        ? "ask anything…"
-        : "/models to start";
+        ? "ask anything… ( / for commands )"
+        : "/models to get started";
 
   const borderColor = props.busy
-    ? theme.primary
+    ? theme.secondary
     : props.focused
       ? theme.border
       : theme.borderDim;
@@ -34,8 +34,8 @@ export function Prompt(props: {
       paddingX={1}
       width={props.width}
     >
-      <Text color={theme.primaryBright} bold>
-        ❯{" "}
+      <Text color={props.busy ? theme.secondaryBright : theme.primaryBright} bold>
+        {props.busy ? "◈" : "❯"}{" "}
       </Text>
       <Box flexGrow={1}>
         <TextInput

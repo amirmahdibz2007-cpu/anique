@@ -77,11 +77,11 @@ export function LearnCard(props: {
       <Box
         flexDirection="column"
         borderStyle="double"
-        borderColor={theme.learn}
+        borderColor={theme.learnBright}
         paddingX={1}
       >
         <Text bold color={theme.learnBright}>
-          edit title · Enter save · Esc cancel
+          ✎ edit title · Enter save · Esc cancel
         </Text>
         <Box>
           <Text color={theme.learnBright} bold>
@@ -112,11 +112,11 @@ export function LearnCard(props: {
     <Box
       flexDirection="column"
       borderStyle="double"
-      borderColor={theme.learn}
+      borderColor={theme.learnBright}
       paddingX={1}
     >
       <Text bold color={theme.learnBright}>
-        ◆ learned — keep as skill?
+        ✧ learned — keep as skill?
       </Text>
       <Text color={theme.textDim}>
         Space toggle · ↑↓ · [y] all · [n] skip · [e] edit · Enter confirm
@@ -127,7 +127,7 @@ export function LearnCard(props: {
         return (
           <Box key={it.id} flexDirection="column">
             <Text color={active ? theme.learnBright : undefined} bold={active}>
-              {active ? "›" : " "} {on ? "◆" : "◇"}{" "}
+              {active ? "▸" : " "} {on ? "◆" : "◇"}{" "}
               <Text color={theme.primary}>[{it.kind}]</Text> {it.title}
             </Text>
             <Text color={theme.textDim}>

@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { theme } from "../theme.js";
+import { Chip } from "../widgets.js";
 
 export function MissionStrip(props: {
   width: number;
@@ -18,8 +19,8 @@ export function MissionStrip(props: {
     props.workspace.split("/").filter(Boolean).pop() ||
     "default";
 
-  const stateIcon = props.busy ? "●" : "○";
-  const stateColor = props.busy ? theme.primaryBright : theme.textDim;
+  const stateIcon = props.busy ? "◉" : "◎";
+  const stateColor = props.busy ? theme.primaryBright : theme.borderDim;
 
   return (
     <Box
@@ -29,23 +30,30 @@ export function MissionStrip(props: {
       width={props.width}
       justifyContent="space-between"
     >
-      <Text>
-        <Text color={stateColor} bold>
-          {stateIcon}{" "}
+      <Box flexGrow={1} flexShrink={1} overflow="hidden">
+        <Text wrap="truncate-end">
+          <Text color={stateColor} bold>
+            {stateIcon}
+          </Text>
+          <Text> </Text>
+          <Text color={theme.secondaryBright} bold>
+            {project}
+          </Text>
+          <Text color={theme.faint}> ▸ </Text>
+          <Text color={theme.primary}>{props.lens}</Text>
+          <Text color={theme.faint}> ▸ </Text>
+          {props.unlocked ? (
+            <Chip label="unlocked" color={theme.warnBright} />
+          ) : (
+            <Chip label="safe" color={theme.textDim} dim />
+          )}
         </Text>
-        <Text color={theme.primaryBright} bold>
-          {project}
+      </Box>
+      <Box flexShrink={0}>
+        <Text color={theme.textDim} wrap="truncate-end">
+          ✦ {props.feedLength} · {props.status.slice(0, 50)}
         </Text>
-        <Text color={theme.textDim}> / </Text>
-        <Text color={theme.primary}>{props.lens}</Text>
-        <Text color={theme.textDim}> · </Text>
-        <Text color={props.unlocked ? theme.warn : theme.textDim}>
-          {props.unlocked ? "unlock" : "safe"}
-        </Text>
-      </Text>
-      <Text color={theme.textDim}>
-        {props.feedLength} · {props.status.slice(0, 50)}
-      </Text>
+      </Box>
     </Box>
   );
 }

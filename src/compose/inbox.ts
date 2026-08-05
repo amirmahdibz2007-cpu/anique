@@ -4,6 +4,7 @@ import {
   readFileSync,
   writeFileSync,
   copyFileSync,
+  watch,
 } from "node:fs";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
@@ -101,4 +102,52 @@ export function openInboxExternal(): { path: string; how: string } {
   }
 
   return { path, how: "open manually" };
+}
+
+/** True when inbox has a non-empty draft ready to /send. */
+export function inboxHasDraft(): boolean {
+  return Boolean(readInboxMessage().trim());
+}
+
+/**
+ * Watch inbox.md for saves. When body becomes non-empty after a change,
+ * invoke onReady (typically auto-/send). Returns disposer.
+ */
+export function watchInbox(
+  onReady: (body: string) => void,
+): () => void {
+  const path = ensureInbox();
+  let lastBody = readInboxMessage();
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const check = () => {
+    try {
+      const body = readInboxMessage();
+      if (body.trim() && body !== lastBody) {
+        lastBody = body;
+        onReady(body);
+      } else {
+        lastBody = body;
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
+  let watcher: { close: () => void } | null = null;
+  try {
+    watcher = watch(path, () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(check, 400);
+    });
+  } catch {
+    // Polling fallback
+    const id = setInterval(check, 1500);
+    return () => clearInterval(id);
+  }
+
+  return () => {
+    if (timer) clearTimeout(timer);
+    watcher?.close();
+  };
 }

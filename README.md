@@ -1,18 +1,27 @@
 <div align="center">
 
+```
+ █████╗ ███╗   ██╗██╗ ██████╗ ██╗   ██╗███████╗
+██╔══██╗████╗  ██║██║██╔═══██╗██║   ██║██╔════╝
+███████║██╔██╗ ██║██║██║   ██║██║   ██║█████╗
+██╔══██║██║╚██╗██║██║██║▄▄ ██║██║   ██║██╔══╝
+██║  ██║██║ ╚████║██║╚██████╔╝╚██████╔╝███████╗
+╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝ ╚══▀▀═╝  ╚═════╝ ╚══════╝
+```
+
 # ◆ Anique
 
-**A multi-domain AI agent in your terminal** — a Cursor-like TUI, a portable CLI, and your own API keys. One core agent. Many lenses.
+**A multi-domain AI agent in your terminal** — Aurora TUI, portable CLI, your own API keys. One core agent. Many lenses.
 
 <br/>
 
 `TypeScript` · `Node 22+` · `Ink TUI` · `SQLite` · `MIT License`
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Node](https://img.shields.io/badge/node-%3E%3D22-339933?logo=node.js&logoColor=white)](package.json)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/amirmahdibz2007-cpu/anique/pulls)
-[![Built with Ink](https://img.shields.io/badge/UI-Ink%20TUI-61DAFB?logo=react&logoColor=white)](https://github.com/vadimdemedes/ink)
+[![License: MIT](https://img.shields.io/badge/License-MIT-66d9ef?style=flat-square)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node](https://img.shields.io/badge/node-%3E%3D22-339933?style=flat-square&logo=node.js&logoColor=white)](package.json)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-bb9af7?style=flat-square)](https://github.com/amirmahdibz2007-cpu/anique/pulls)
+[![Aurora TUI](https://img.shields.io/badge/UI-Aurora%20TUI-ff79c6?style=flat-square&logo=react&logoColor=white)](https://github.com/vadimdemedes/ink)
 
 </div>
 
@@ -21,29 +30,46 @@
 **Anique** runs a sharp agent loop in the terminal. Swap **lenses** to change what it's good at — writing, coding, teaching, marketing, bots, systems — or pick the **evolve** lens to make Anique improve itself.
 
 ```
-◆ ANIQUE  code · act · openrouter/anthropic/claude-sonnet-4
-┌─────────────────────────────────────────────┐
-│  ▸ you   fix the flaky auth test            │
-│  ⚙ grep   ⚙ apply_patch   ◆ anique …       │
-│  ▸ you   why is CI red?                     │
-│  ⚙ bash npm test   ◆ 3 tests fixed          │
-└─────────────────────────────────────────────┘
-› ask Anique…   ↑/↓ scroll · PgUp/PgDn
+ █████╗ ███╗   ██╗██╗ ██████╗ ██╗   ██╗███████╗
+██╔══██╗████╗  ██║██║██╔═══██╗██║   ██║██╔════╝
+███████║██╔██╗ ██║██║██║   ██║██║   ██║█████╗
+██╔══██║██║╚██╗██║██║██║▄▄ ██║██║   ██║██╔══╝
+██║  ██║██║ ╚████║██║╚██████╔╝╚██████╔╝███████╗
+╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝ ╚══▀▀═╝  ╚═════╝ ╚══════╝
+               ────────── ◆ ──────────
+     your terminal · your memory · your daily driver
+
+╭─ ◆ anique ‹default› ‹code› ⟩ ● act ⟩ claude-sonnet ─╮
+│ ⣿⣿⣿⣿⡄⠀⠀ 42% · $0.083 · ⬡a1b2c3d4 · ~/proj     │
+╰─────────────────────────────────────────────────────╯
+◎ my-app ▸ code ▸ ‹safe›                    ✦ 8 · ready
+╭─ ◇ you ─────────────────────────────────────────────╮
+│  fix the flaky auth test                            │
+╰─────────────────────────────────────────────────────╯
+⌕ grep · ◎ read_file · ✎ write_file
+╔═ ✦ anique ══════════════════════════════════════════╗
+║  3 tests fixed · auth suite green again             ║
+╚═════════════════════════════════════════════════════╝
+◈ done · 3 tools · 2.1s
+╭─────────────────────────────────────────────────────╮
+│ ❯ ask anything… ( / for commands )                  │
+╰─────────────────────────────────────────────────────╯
 ```
 
 ## ✨ Highlights
 
 | Feature | Description |
 |---------|-------------|
-| **Agent loop with tools** | File read/write, patch, grep/glob, bash, git, memory, skills, todos — plus a plan-before-act rhythm |
+| **Aurora TUI** | True-color splash wordmark, gradient brand, pill badges, closed message bubbles, per-tool icons |
+| **Agent loop with tools** | File read/write, patch, ripgrep, bash, git, memory, skills, todos — plus a plan-before-act rhythm |
 | **Lenses** | Swap domain expertise with one keypress (`/code`, `/write`, `/teach`, …) |
 | **Deep missions** | Auto-plan → execute → verify → repair → synthesize for hard tasks |
+| **Named projects** | Per-folder memory + chat history (`/project new <name>`) while still using global USER.md |
 | **Cheap by design** | Automatic long-history compaction so tokens stay low and sessions never overflow |
-| **Safety gates** | Risk-classified approvals (`safe` / `workspace_write` / `dangerous`), session-wide allow, allowlists, undo + version vault |
+| **Safety gates** | Enter = approve once; `u` = unlock session; allowlists, undo + version vault |
 | **Multi-provider** | OpenRouter, OpenAI, Ollama, or any OpenAI-compatible endpoint |
 | **Bilingual UI** | English / Persian replies (`/fa`, `/en`) — UI stays English |
 | **Profiles** | Isolated agent homes (`anique profile create coder`) — configs, skills, memory per profile |
-| **Mission theater** | Live timeline of tool calls, approvals, and agent reasoning |
 
 ---
 
@@ -234,6 +260,28 @@ anique skills code                            # list skills for code lens
 anique skill-save code "my-skill" "content"   # save a skill
 ```
 
+### Named projects (own memory + chat history per folder)
+
+Lighter than `anique profile` / `anique project init` (which switch the *entire*
+ANIQUE_HOME — provider, model, API key, everything). A **named project** just
+groups one or more directories under a distinctive name so they share their
+own durable memory and chat history, while still inheriting the default
+`USER.md` / `MEMORY.md` on every turn.
+
+```bash
+anique projects new "Aurora"                  # bind cwd to a new named project
+anique projects bind "Aurora"                 # bind cwd to an existing project
+anique projects rename "Aurora Redux"         # rename the project bound to cwd
+anique projects unbind                        # detach cwd (falls back to per-path memory)
+anique projects status                        # show project + bound dirs for cwd
+anique projects list                          # list every named project
+```
+
+Inside the TUI/REPL, use `/project` (see Slash Commands below). Creating a
+project migrates any pre-existing per-folder memory into the named store, and
+resume-last / `/sessions` group chat history across every directory bound to
+that project.
+
 ### Session management
 
 ```bash
@@ -287,12 +335,15 @@ anique init-workspace                         # write starter ANIQUE.md
 | `/evolve` | Enter evolve mode (workspace locks to Anique source) |
 | `/learn` | Propose learnings from last mission (LearnCard) |
 | `/learn on\|off` | Sticky auto-learn after missions |
-| `/fa` / `/en` | Persian / English replies (UI stays English) |
-| `/compose` / `/send` | Edit `~/.anique/inbox.md` in GUI editor, then send |
+| `/fa` / `/en` | Persian / English replies (UI stays English). `/fa` does not force the inbox editor. |
+| `/compose` / `/send` | Edit `~/.anique/inbox.md` in GUI editor, then send. `/compose watch` auto-sends on save. |
 | `/private` | Owner careful profile (not public default) |
 | `/versions` | List prior file versions · `/rollback <id>` |
-| `/redo` | Resend last user message |
+| `/redo` | Preview last message into prompt for edit; `/redo!` resends unchanged |
 | `/memory` | Show USER.md / MEMORY.md |
+| `/project` | Status of the named project bound to this folder |
+| `/project new <name>` | Give this folder its own memory + chat history (plus default memory) |
+| `/project bind <name>` / `rename <name>` / `unbind` / `list` | Manage named projects |
 | `/config` | Show current config |
 | `/clear` | Clear history |
 
@@ -318,7 +369,7 @@ Anique classifies every tool call by **risk level**:
 
 ### Safety features
 
-- **Session unlock**: First approval (`Enter`/`y`) unlocks the whole session for that risk class
+- **Session unlock**: `Enter`/`y` approves the action **once**; press `u` to unlock the whole session for that risk class
 - **Workspace allow**: Persistent allowlist per workspace
 - **Undo + Version vault**: Every prior file version saved before edit — `/undo` or `/rollback <id>`
 - **API keys**: Stored in `~/.anique/config.json` (mode `600`), never in the repo
@@ -331,6 +382,7 @@ Anique classifies every tool call by **risk level**:
 ```bash
 npm run typecheck   # TypeScript type-check
 npm run smoke       # offline sanity checks (9 lenses, safety, prompts)
+npm run regress:daily # focused regressions (approval, retries, projects, slash parity)
 npm run e2e         # end-to-end approval behavior tests
 npm run build       # compile to dist/
 npm run anique -- … # run from source (tsx)
@@ -417,12 +469,13 @@ Anique learns from missions via **evidence-gated LearnCards**:
 
 ## 🎨 TUI Features
 
-- **Cursor-like layout**: Header (lens/rhythm/model), Feed (messages), Status bar (context %, tokens, approvals)
-- **Scrolling**: `↑/↓` line, `PgUp/PgDn` page, `Ctrl+↑/↓` / `Alt+↑/↓` fast scroll
-- **Markdown rendering**: Code blocks, tables, lists in terminal
-- **Live context bar**: Shows context window usage %
+- **Aurora splash**: Big Unicode wordmark on boot (gradient cyan → violet → pink), then fades into the session
+- **Cursor-like layout**: Gradient header, mission strip, feed, status bar, rounded prompt
+- **Message bubbles**: Closed boxes for you (`╭╮`) and Anique (`╔╗`), per-tool icons (⌕ grep, ✎ write, ❱ bash, …)
+- **Scrolling**: `↑/↓` line (empty prompt), `PgUp/PgDn` page, `Shift|Alt|Ctrl+↑/↓` fast, `Home`/`End` ends. Feed keeps up to 800 items; scroll position is preserved while streaming if you scrolled up.
+- **Live context bar**: Braille meter with threshold colors (green → amber → red)
 - **Mission theater**: Timeline of tool calls, approvals, reasoning
-- **Theme**: Gold & black, configurable in `src/tui/theme.ts`
+- **Theme**: True-color Aurora palette in `src/tui/theme.ts` (hex → chalk truecolor)
 
 ---
 
@@ -453,46 +506,72 @@ PRs welcome! Please:
 
 # ◆ Anique (فارسی)
 
-**یک عامل هوش مصنوعی چند دامنه در ترمینال** — یک TUI شبیه Cursor، یک CLI قابل حمل، و کلیدهای API شخصی. یک هسته. چندین لنز.
+```
+ █████╗ ███╗   ██╗██╗ ██████╗ ██╗   ██╗███████╗
+██╔══██╗████╗  ██║██║██╔═══██╗██║   ██║██╔════╝
+███████║██╔██╗ ██║██║██║   ██║██║   ██║█████╗
+██╔══██║██║╚██╗██║██║██║▄▄ ██║██║   ██║██╔══╝
+██║  ██║██║ ╚████║██║╚██████╔╝╚██████╔╝███████╗
+╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝ ╚══▀▀═╝  ╚═════╝ ╚══════╝
+```
+
+**یک عامل هوش مصنوعی چند دامنه در ترمینال** — TUI با تم Aurora، CLI قابل حمل، و کلیدهای API شخصی. یک هسته. چندین لنز.
 
 <br/>
 
 `TypeScript` · `Node 22+` · `Ink TUI` · `SQLite` · `مجوز MIT`
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Node](https://img.shields.io/badge/node-%3E%3D22-339933?logo=node.js&logoColor=white)](package.json)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/amirmahdibz2007-cpu/anique/pulls)
-[![Built with Ink](https://img.shields.io/badge/UI-Ink%20TUI-61DAFB?logo=react&logoColor=white)](https://github.com/vadimdemedes/ink)
+[![License: MIT](https://img.shields.io/badge/License-MIT-66d9ef?style=flat-square)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/-TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node](https://img.shields.io/badge/node-%3E%3D22-339933?style=flat-square&logo=node.js&logoColor=white)](package.json)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-bb9af7?style=flat-square)](https://github.com/amirmahdibz2007-cpu/anique/pulls)
+[![Aurora TUI](https://img.shields.io/badge/UI-Aurora%20TUI-ff79c6?style=flat-square&logo=react&logoColor=white)](https://github.com/vadimdemedes/ink)
 
 ---
 
 **Anique** یک حلقه عامل (agent loop) تیز در ترمینال اجرا می‌کند. **لنزها** را عوض کنید تا تخصص دامنه تغییر کند — نوشتن، کدنویسی، تدریس، بازاریابی، ربات‌ها، سیستم‌ها — یا لنز **evolve** را انتخاب کنید تا Anique خودش را بهبود بخشد.
 
 ```
-◆ ANIQUE  code · act · openrouter/anthropic/claude-sonnet-4
-┌─────────────────────────────────────────────┐
-│  ▸ you   fix the flaky auth test            │
-│  ⚙ grep   ⚙ apply_patch   ◆ anique …       │
-│  ▸ you   why is CI red?                     │
-│  ⚙ bash npm test   ◆ 3 tests fixed          │
-└─────────────────────────────────────────────┘
-› ask Anique…   ↑/↓ scroll · PgUp/PgDn
+ █████╗ ███╗   ██╗██╗ ██████╗ ██╗   ██╗███████╗
+██╔══██╗████╗  ██║██║██╔═══██╗██║   ██║██╔════╝
+███████║██╔██╗ ██║██║██║   ██║██║   ██║█████╗
+██╔══██║██║╚██╗██║██║██║▄▄ ██║██║   ██║██╔══╝
+██║  ██║██║ ╚████║██║╚██████╔╝╚██████╔╝███████╗
+╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝ ╚══▀▀═╝  ╚═════╝ ╚══════╝
+               ────────── ◆ ──────────
+     your terminal · your memory · your daily driver
+
+╭─ ◆ anique ‹default› ‹code› ⟩ ● act ⟩ claude-sonnet ─╮
+│ ⣿⣿⣿⣿⡄⠀⠀ 42% · $0.083 · ⬡a1b2c3d4 · ~/proj     │
+╰─────────────────────────────────────────────────────╯
+◎ my-app ▸ code ▸ ‹safe›                    ✦ 8 · ready
+╭─ ◇ you ─────────────────────────────────────────────╮
+│  تست احراز هویت رو درست کن                          │
+╰─────────────────────────────────────────────────────╯
+⌕ grep · ◎ read_file · ✎ write_file
+╔═ ✦ anique ══════════════════════════════════════════╗
+║  ۳ تست درست شد · سوئیت auth دوباره سبز است          ║
+╚═════════════════════════════════════════════════════╝
+◈ done · 3 tools · 2.1s
+╭─────────────────────────────────────────────────────╮
+│ ❯ ask anything… ( / for commands )                  │
+╰─────────────────────────────────────────────────────╯
 ```
 
 ## ✨ ویژگی‌های برجسته
 
 | ویژگی | توضیح |
 |---------|-------|
-| **حلقه عامل با ابزارها** | خواندن/نوشتن فایل، پچ، grep/glob، bash، git، حافظه، مهارت‌ها، todoها — به علاوه ریتم plan-before-act |
+| **Aurora TUI** | اسپلش یونیکد، وردمارک گرادیان، بج پیل، حباب پیام بسته، آیکون مخصوص هر ابزار |
+| **حلقه عامل با ابزارها** | خواندن/نوشتن فایل، پچ، ripgrep، bash، git، حافظه، مهارت‌ها، todoها — به علاوه ریتم plan-before-act |
 | **لنزها** | تغییر تخصص دامنه با یک فشردن کلید (`/code`، `/write`، `/teach`، …) |
 | **مهمان‌های عمیق** | برنامه‌ریزی خودکار → اجرا → تأیید → تعمیر → ترکیب برای کارهای سخت |
+| **پروژه‌های نام‌دار** | حافظه + تاریخچه چت جدا per-folder با `/project new <name>` + حافظه پیش‌فرض |
 | **ارزان به طراحی** | فشرده‌سازی خودکار تاریخچه طولانی تا توکن‌ها کم بمانند و جلسه‌ها هرگز پر نشوند |
-| **دروازه‌های ایمنی** | تأییدات طبقه‌بندی شده بر اساس ریسک (`safe` / `workspace_write` / `dangerous`)، اجازه کل جلسه، لیست‌های مجاز، undo + مخزن نسخه‌ها |
+| **دروازه‌های ایمنی** | Enter = تأیید یک‌بار؛ `u` = آنلاک جلسه؛ لیست‌های مجاز، undo + مخزن نسخه‌ها |
 | **چند ارائه‌دهنده** | OpenRouter، OpenAI، Ollama، یا هر نقطه پایانی سازگار OpenAI |
 | **رابط دو زبانه** | پاسخ‌های انگلیسی / فارسی (`/fa`، `/en`) — UI انگلیسی می‌ماند |
-| **پروفایل‌ها** | خانه‌های جدا شده عامل (`anique profile create coder`) — کانفیگ، مهارت‌ها، حافظه به ازای هر پروفایل |
-| **تئاتر مأموریت** | خط زمان زنده فراخوانی ابزارها، تأییدات، و استدلال عامل |
+| **پروفایل‌ها** | خانه‌های جداگانه عامل (`anique profile create coder`) — کانفیگ، مهارت، حافظه per profile |
 
 ---
 
@@ -866,12 +945,13 @@ Anique از مأموریت‌ها از طریق **LearnCardهای گیت‌شد�
 
 ## 🎨 ویژگی‌های TUI
 
-- **چیدمان شبیه Cursor**: هدر (لنز/ریتم/مدل)، فید (پیام‌ها)، نوار وضعیت (٪ متن، توکن‌ها، تأییدات)
-- **اسکرول**: `↑/↓` خط، `PgUp/PgDn` صفحه، `Ctrl+↑/↓` / `Alt+↑/↓` اسکرول سریع
-- **رندر مارک‌داون**: بلوک‌های کد، جداول، لیست‌ها در ترمینال
-- **نوار متن زنده**: نمایش درصد استفاده از پنجره متن
+- **اسپلش Aurora**: وردمارک یونیکد بزرگ در بوت (گرادیان سایان → وایولت → پینک)، بعد ورود به جلسه
+- **چیدمان شبیه Cursor**: هدر گرادیان، نوار مأموریت، فید، نوار وضعیت، پرامپت گرد
+- **حباب پیام**: باکس بسته برای شما (`╭╮`) و Anique (`╔╗`)، آیکون مخصوص هر ابزار
+- **اسکرول**: `↑/↓` خط (پرامپت خالی)، `PgUp/PgDn` صفحه، `Shift|Alt|Ctrl+↑/↓` سریع، `Home`/`End`
+- **نوار متن زنده**: متر براِیل با رنگ آستانه (سبز → امبر → قرمز)
 - **تئاتر مأموریت**: خط زمان فراخوانی ابزارها، تأییدات، استدلال
-- **تم**: طلا و مشکی، قابل کانفیگ در `src/tui/theme.ts`
+- **تم**: پالت true-color Aurora در `src/tui/theme.ts`
 
 ---
 

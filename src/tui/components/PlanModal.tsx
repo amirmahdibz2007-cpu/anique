@@ -31,17 +31,17 @@ export function PlanModal(props: {
       <Box
         flexDirection="column"
         borderStyle="double"
-        borderColor={theme.primary}
+        borderColor={theme.borderModal}
         paddingX={1}
       >
-        <Text bold color={theme.primaryBright}>
-          edit plan note
+        <Text bold color={theme.secondaryBright}>
+          ✎ edit plan note
         </Text>
         <Text color={theme.textDim}>
           tell the planner what to change · Esc cancel
         </Text>
         <Box>
-          <Text color={theme.primaryBright} bold>
+          <Text color={theme.secondaryBright} bold>
             ❯{" "}
           </Text>
           <TextInput
@@ -62,10 +62,10 @@ export function PlanModal(props: {
     <Box
       flexDirection="column"
       borderStyle="double"
-      borderColor={theme.primary}
+      borderColor={theme.borderModal}
       paddingX={1}
     >
-      <Text bold color={theme.primaryBright}>
+      <Text bold color={theme.secondaryBright}>
         ◈ deep plan · {props.plan.tasks.length} tasks
       </Text>
       <Text>
@@ -86,15 +86,16 @@ export function PlanModal(props: {
           <Text>
             {"  "}
             <Text color={theme.primary}>{i + 1}.</Text> {t.title}
-            {t.risky ? <Text color={theme.warn}> ⚠</Text> : null}
+            {t.risky ? <Text color={theme.warnBright}> ⚠</Text> : null}
           </Text>
           <Text color={theme.textDim}>
             {"     "}accept: {t.acceptance}
           </Text>
         </Box>
       ))}
+      <Text> </Text>
       <Text color={theme.successBright} bold>
-        [y] run
+        ▸ [y] run
       </Text>
       <Text color={theme.textDim}>
         [e] edit · [n] cancel

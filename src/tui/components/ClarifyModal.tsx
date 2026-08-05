@@ -67,7 +67,7 @@ export function ClarifyModal(props: {
 
   if (!q) {
     return (
-      <Box borderStyle="double" borderColor={theme.borderDim} paddingX={1}>
+      <Box borderStyle="round" borderColor={theme.borderDim} paddingX={1}>
         <Text color={theme.textDim}>no questions.</Text>
       </Box>
     );
@@ -77,11 +77,11 @@ export function ClarifyModal(props: {
     <Box
       flexDirection="column"
       borderStyle="double"
-      borderColor={theme.primary}
+      borderColor={theme.borderModal}
       paddingX={1}
     >
-      <Text bold color={theme.primaryBright}>
-        ❓ clarify · {idx + 1}/{props.questions.length}
+      <Text bold color={theme.secondaryBright}>
+        ✧ clarify · {idx + 1}/{props.questions.length}
       </Text>
       <Text color={theme.textDim}>
         {answers.length > 0 ? `✓ ${answers.length} answered · ` : ""}
@@ -93,9 +93,9 @@ export function ClarifyModal(props: {
       {!typingOwn ? (
         <Box flexDirection="column" marginTop={0}>
           {choices.map((c, i) => (
-            <Text key={i} color={c === OWN ? theme.primary : theme.text}>
+            <Text key={i} color={c === OWN ? theme.secondary : theme.text}>
               {"  "}
-              <Text color={theme.primaryBright} bold>
+              <Text color={theme.secondaryBright} bold>
                 {i + 1})
               </Text>{" "}
               {c}
@@ -107,9 +107,9 @@ export function ClarifyModal(props: {
         </Box>
       ) : (
         <Box flexDirection="column">
-          <Text color={theme.primary}>your answer:</Text>
+          <Text color={theme.secondary}>your answer:</Text>
           <Box>
-            <Text color={theme.primaryBright} bold>
+            <Text color={theme.secondaryBright} bold>
               ❯{" "}
             </Text>
             <TextInput

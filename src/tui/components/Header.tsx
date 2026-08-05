@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
-import { theme } from "../theme.js";
+import { theme, AURORA } from "../theme.js";
+import { Gradient, Pill, thresholdColor, dotBar } from "../widgets.js";
 
 export function Header(props: {
   profile: string;
@@ -22,48 +23,58 @@ export function Header(props: {
     ? `~${props.workspace.slice(home.length)}`
     : props.workspace;
 
-  const ctxBar = "█".repeat(Math.round(props.ctxPct / 10)) +
-    "░".repeat(10 - Math.round(props.ctxPct / 10));
+  const ctxColor = thresholdColor(props.ctxPct);
+  const ctxBar = dotBar(props.ctxPct, 10);
 
-  // Compact header: everything on one line
   return (
     <Box
       borderStyle="round"
-      borderColor={theme.borderDim}
+      borderColor={theme.border}
       paddingX={1}
       justifyContent="space-between"
       width={props.cols}
     >
-      <Text>
-        <Text bold color={theme.primaryBright}>
-          ◈ anique
+      <Box flexGrow={1} flexShrink={1} overflow="hidden">
+        <Text wrap="truncate-end">
+          <Gradient text="◆ anique" colors={AURORA} bold />
+          <Text> </Text>
+          <Pill label={props.profile} bg={theme.secondary} />
+          <Text> </Text>
+          <Pill
+            label={props.lens}
+            bg={props.lens === "atelier" ? theme.error : theme.primary}
+          />
+          {props.locale === "fa" ? (
+            <Text color={theme.learn}> ✎fa</Text>
+          ) : null}
+          {props.leanMode ? <Text color={theme.warn}> ⚡lean</Text> : null}
+          {props.lens === "atelier" ? (
+            <Text color={theme.errorBright}> ⚠pvt</Text>
+          ) : null}
+          <Text dimColor> ⟩ </Text>
+          <Text color={theme.model} bold>
+            {props.rhythm === "plan" ? "◔ plan" : "● act"}
+          </Text>
+          <Text dimColor> ⟩ </Text>
+          {props.modelReady ? (
+            <Text color={theme.textDim}>{props.modelLabel}</Text>
+          ) : (
+            <Text color={theme.warnBright}>⚠ no model — /models</Text>
+          )}
         </Text>
-        <Text color={theme.secondary}> {props.profile}</Text>
-        <Text color={theme.primary}> {props.lens}</Text>
-        {props.locale === "fa" ? (
-          <Text color={theme.learn}> fa</Text>
-        ) : null}
-        {props.leanMode ? (
-          <Text color={theme.warn}> ⚡lean</Text>
-        ) : null}
-        {props.lens === "atelier" ? (
-          <Text color={theme.error}> ⚠pvt</Text>
-        ) : null}
-        <Text dimColor> · </Text>
-        <Text color={theme.model}>{props.rhythm}</Text>
-        <Text dimColor> · </Text>
-        {props.modelReady ? (
-          <Text color={theme.textDim}>{props.modelLabel}</Text>
-        ) : (
-          <Text color={theme.warn}>no model</Text>
-        )}
-      </Text>
-      <Text color={theme.textDim}>
-        [{ctxBar}] {props.ctxPct}% · ${props.costUsd.toFixed(3)}
-        {props.sessionId ? ` · ${props.sessionId.slice(0, 8)}` : ""}
-        {" "}
-        {shortWs.slice(-28)}
-      </Text>
+      </Box>
+      <Box flexShrink={0}>
+        <Text color={theme.textDim} wrap="truncate-end">
+          <Text color={ctxColor}>{ctxBar}</Text> {props.ctxPct}%
+          <Text dimColor> · </Text>
+          <Text color={theme.successBright}>${props.costUsd.toFixed(3)}</Text>
+          {props.sessionId ? (
+            <Text dimColor> · ⬡{props.sessionId.slice(0, 8)}</Text>
+          ) : null}
+          <Text dimColor> · </Text>
+          {shortWs.slice(-28)}
+        </Text>
+      </Box>
     </Box>
   );
 }

@@ -134,8 +134,23 @@ export function touchSession(id: string, lens?: string): void {
   }
 }
 
-export function listSessions(limit = 20): SessionRow[] {
+export function listSessions(
+  limit = 20,
+  workspace?: string | string[],
+): SessionRow[] {
   const database = getDb();
+  if (workspace) {
+    const paths = Array.isArray(workspace) ? workspace : [workspace];
+    if (paths.length) {
+      const placeholders = paths.map(() => "?").join(", ");
+      return database
+        .prepare(
+          `SELECT id, lens, workspace, title, created_at, updated_at
+           FROM sessions WHERE workspace IN (${placeholders}) ORDER BY updated_at DESC LIMIT ?`,
+        )
+        .all(...paths, limit) as unknown as SessionRow[];
+    }
+  }
   return database
     .prepare(
       `SELECT id, lens, workspace, title, created_at, updated_at

@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Text, useApp, useInput } from "ink";
 import { theme } from "./theme.js";
 import { loadConfig, saveConfig } from "../config/index.js";
+import { resolveRuntimeConfig } from "../config/runtime.js";
 import { describeLenses, getLens, listLensIds } from "../lenses/index.js";
 import { runAgent, type Rhythm } from "../agent/loop.js";
 import { aniqueSourceRoot } from "../meta/sourceRoot.js";
@@ -75,10 +76,12 @@ import { PlanModal } from "./components/PlanModal.js";
 import { LearnCard } from "./components/LearnCard.js";
 import { ModelsPicker, type PickerRow } from "./components/ModelsPicker.js";
 import { SessionPicker } from "./components/SessionPicker.js";
+import { Splash } from "./components/Splash.js";
 import { useEscEsc } from "./hooks/useEscEsc.js";
 import type { DeepMode } from "../agent/deep.js";
 import { getLastEvidencePack } from "../learn/lastMission.js";
 import { runLearningPass } from "../learn/runLearning.js";
+import { findProjectForPath } from "../learn/namedProjects.js";
 import type { Locale } from "../i18n/termFa.js";
 import {
   ensureInbox,
@@ -87,7 +90,11 @@ import {
   clearInbox,
   archiveInbox,
   inboxPath,
+  inboxHasDraft,
+  watchInbox,
 } from "../compose/inbox.js";
+
+const FEED_CAP = 800;
 import { activatePrivateProfile } from "../profiles/privateCare.js";
 import { listVersions, rollbackVersion } from "../versions/vault.js";
 
@@ -103,14 +110,16 @@ const nid = () => `f_${++feedSeq}`;
 
 function helpText(): string {
   return [
-    "Slash: /deep  /fast  /new  /sessions  /models  /profile  /lens  /plan  /act  /cost",
-    "       /atelier  /ingest  /compose  /send  /fa  /en  /redo  /learn  /private",
-    "       /lean  /versions  /rollback  /context  /compact  /todos  /undo  /export  /quit",
-    `Lenses: ${listLensIds().join(", ")}`,
-    "atelier [private]: deep coding lens — /atelier then /ingest to learn this repo forever",
-    "Persian: /compose opens inbox.md in a GUI editor · then /send",
-    "Scroll: PgUp/PgDn through long answers · Private careful: /private",
-    "Keys: Enter send · Esc interrupt · Esc Esc quit · Ctrl+L clear · ? help",
+    "◈ Slash  /deep /fast /new /sessions /models /profile /lens /plan /act /cost",
+    "         /atelier /ingest /compose /send /fa /en /redo /learn /private /lean",
+    "         /versions /rollback /context /compact /todos /undo /export /quit",
+    "         /project [status|new|bind|rename|unbind|list]",
+    `◈ Lenses ${listLensIds().join(" · ")}`,
+    "✦ atelier[private] deep-coding · /atelier then /ingest to learn this repo",
+    "✦ fa/compose — Persian replies · GUI inbox · /compose watch auto-sends",
+    "✦ project — /project new <name> = own memory+history, plus default memory",
+    "▸ Scroll ↑/↓ PgUp/PgDn Alt/Shift+↑/↓ Home/End · Redo /redo edit · /redo! resend",
+    "▸ Keys   Enter send · Esc interrupt · Esc Esc quit · Ctrl+L clear · ? help",
   ].join("\n");
 }
 
@@ -215,6 +224,10 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
     props.sessionId ? "ready" : "pending",
   );
   const [bootSessions, setBootSessions] = useState<SessionRow[]>([]);
+  const [splashDone, setSplashDone] = useState(false);
+  const [draftPending, setDraftPending] = useState(false);
+  const [composeWatch, setComposeWatch] = useState(false);
+  const composeWatchRef = useRef<(() => void) | null>(null);
 
   const modalOpen = Boolean(
     approvalReq ||
@@ -282,11 +295,58 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
           return;
         }
       } catch {
-        /* fall through to picker */
+        /* fall through */
       }
     }
 
-    const sessions = listSessions(20);
+    const boot = cfg.boot ?? "resume-last";
+    const sessions = listSessions(40);
+    const boundProject = findProjectForPath(props.workspace);
+    const wsSessions = listSessions(
+      20,
+      boundProject ? boundProject.paths : props.workspace,
+    );
+
+    if (boot === "new") {
+      setBootGate("ready");
+      setStatus("ready");
+      setFeed([
+        {
+          id: nid(),
+          kind: "system",
+          text: !isModelReady(cfg)
+            ? "New chat · model: not set — /models to configure"
+            : `New chat · ${cfg.model}\n/compose · /sessions · boot=new`,
+        },
+      ]);
+      return;
+    }
+
+    if (boot === "resume-last" && wsSessions[0]) {
+      const ses = wsSessions[0];
+      const loaded = messagesToFeedAndHistory(ses.id);
+      setSessionId(ses.id);
+      setLens(ses.lens);
+      setWorkspace(ses.workspace);
+      setHistory(loaded.history);
+      setLastAssistant(loaded.lastAssistant);
+      const lastU = [...loaded.history]
+        .reverse()
+        .find((m) => m.role === "user")?.content;
+      if (lastU) setLastUserPrompt(lastU);
+      setBootGate("ready");
+      setStatus(`resumed ${ses.id.slice(0, 18)}`);
+      setFeed([
+        {
+          id: nid(),
+          kind: "system",
+          text: `Resumed last · ${ses.title}\n${modelHint}\n(/sessions to switch · boot=resume-last)`,
+        },
+        ...loaded.feed,
+      ]);
+      return;
+    }
+
     setBootSessions(sessions);
     setBootGate("picker");
     setStatus("pick a chat · or New");
@@ -297,7 +357,22 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
         text: modelHint,
       },
     ]);
-  }, [props.sessionId]);
+  }, [props.sessionId, props.workspace]);
+
+  // Draft badge
+  useEffect(() => {
+    const tick = () => setDraftPending(inboxHasDraft());
+    tick();
+    const id = setInterval(tick, 2000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Brand splash — the very first thing a user sees, held for a beat even
+  // when boot resolves instantly so it never just flashes for one frame.
+  useEffect(() => {
+    const id = setTimeout(() => setSplashDone(true), 550);
+    return () => clearTimeout(id);
+  }, []);
 
   const enterNewChat = useCallback(() => {
     const cfg = loadConfig();
@@ -346,7 +421,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
   const rows = process.stdout.rows || 24;
   const feedHeight = Math.max(
     8,
-    rows - (showHelp ? 14 : 10) - (modalOpen ? 8 : 0),
+    rows - (showHelp ? 22 : 10) - (modalOpen ? 8 : 0),
   );
 
   // Calculate scroll information
@@ -368,7 +443,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
           setClarifyReq({ questions, resolve });
           setStatus("waiting on you · clarify");
           setFeed((f) => [
-            ...f.slice(-300),
+            ...f.slice(-FEED_CAP),
             {
               id: nid(),
               kind: "system",
@@ -383,7 +458,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
           setPlanReq({ plan, resolve });
           setStatus("waiting on you · approve plan");
           setFeed((f) => [
-            ...f.slice(-300),
+            ...f.slice(-FEED_CAP),
             {
               id: nid(),
               kind: "system",
@@ -398,7 +473,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
           setLearnReq({ items, resolve });
           setStatus("waiting on you · learn");
           setFeed((f) => [
-            ...f.slice(-300),
+            ...f.slice(-FEED_CAP),
             {
               id: nid(),
               kind: "system",
@@ -446,22 +521,32 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
 
     // Arrow-key scrolling.
     // When the prompt is empty the cursor has nowhere to go in the text
-    // input, so Up/Down scroll the feed line-by-line; Shift+Up/Down always
-    // scroll faster (page-sized) even while typing.
+    // input, so Up/Down scroll the feed line-by-line; Shift/Alt+Up/Down always
+    // scroll faster even while typing. Home/End jump ends.
     const inputEmpty = input.length === 0;
     const scrollBy = (delta: number) =>
       setScrollLines((s) => {
         const max = feedMaxScroll(feed, streamBuf, cols, feedHeight);
         return Math.max(0, Math.min(max, s + delta));
       });
-    if (key.shift && key.upArrow) scrollBy(page * 2);
-    else if (key.shift && key.downArrow) scrollBy(-page * 2);
-    else if (inputEmpty && key.upArrow) scrollBy(3); // ↑ = scroll up (older)
-    else if (inputEmpty && key.downArrow) scrollBy(-3); // ↓ = scroll down (newer)
+    if ((key as { home?: boolean }).home || (ch === "\x1b[H")) {
+      const max = feedMaxScroll(feed, streamBuf, cols, feedHeight);
+      setScrollLines(max);
+      return;
+    }
+    if ((key as { end?: boolean }).end || (ch === "\x1b[F")) {
+      setScrollLines(0);
+      return;
+    }
+    const fast = key.shift || key.meta || key.ctrl;
+    if (fast && key.upArrow) scrollBy(page * 2);
+    else if (fast && key.downArrow) scrollBy(-page * 2);
+    else if (inputEmpty && key.upArrow) scrollBy(3);
+    else if (inputEmpty && key.downArrow) scrollBy(-3);
   });
 
   const pushSystem = useCallback((text: string) => {
-    setFeed((f) => [...f.slice(-300), { id: nid(), kind: "system", text }]);
+    setFeed((f) => [...f.slice(-FEED_CAP), { id: nid(), kind: "system", text }]);
     setScrollLines(0);
   }, []);
 
@@ -483,7 +568,8 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
       setBusy(true);
       setStatus(deepMode === "force" ? "deep · starting…" : "thinking…");
       setStreamBuf("");
-      setScrollLines(0);
+      // Don't yank the viewport if the user scrolled up to read
+      if (s.scrollLines === 0) setScrollLines(0);
       setLastUserPrompt(prompt);
 
       let historyForRun = s.history;
@@ -505,7 +591,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
             break;
           }
           return [
-            ...next.slice(-300),
+            ...next.slice(-FEED_CAP),
             {
               id: nid(),
               kind: "system",
@@ -516,14 +602,14 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
         });
       } else {
         setFeed((f) => [
-          ...f.slice(-300),
+          ...f.slice(-FEED_CAP),
           { id: nid(), kind: "user", text: prompt },
         ]);
       }
 
       try {
         const result = await runAgent({
-          config: loadConfig(),
+          config: resolveRuntimeConfig(),
           lensId: activeLens,
           workspace: activeWs,
           userMessage: prompt,
@@ -547,7 +633,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
               return;
             }
             setFeed((f) => [
-              ...f.slice(-300),
+              ...f.slice(-FEED_CAP),
               { id: nid(), kind: "event", event: ev },
             ]);
             if (ev.kind === "tool") setStatus(`tool ${ev.summary}`);
@@ -571,7 +657,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
         setCostTick((tick) => tick + 1);
         if (result.finalText) {
           setFeed((f) => [
-            ...f.slice(-300),
+            ...f.slice(-FEED_CAP),
             { id: nid(), kind: "assistant", text: result.finalText },
           ]);
         }
@@ -581,9 +667,25 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
             : `done · ${result.steps} steps · ${result.toolCallCount} tools · ${result.sessionId}`,
         );
       } catch (err) {
-        setStreamBuf("");
-        pushSystem(err instanceof Error ? err.message : String(err));
-        setStatus("error");
+        // Keep partial stream in the feed so a cut connection doesn't erase progress
+        setStreamBuf((partialBuf) => {
+          if (partialBuf.trim()) {
+            setFeed((f) => [
+              ...f.slice(-FEED_CAP),
+              {
+                id: nid(),
+                kind: "assistant",
+                text: `${partialBuf}\n\n…[stream interrupted]`,
+              },
+            ]);
+          }
+          return "";
+        });
+        const msg = err instanceof Error ? err.message : String(err);
+        pushSystem(
+          `${msg}\nHint: type /redo to retry, or /models to switch provider.`,
+        );
+        setStatus("error · partial kept · /redo or /models");
       } finally {
         abortRef.current = null;
         setBusy(false);
@@ -592,8 +694,78 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
     [pushSystem],
   );
 
+  // Optional compose auto-send after inbox.md save
+  useEffect(() => {
+    if (!composeWatch) {
+      composeWatchRef.current?.();
+      composeWatchRef.current = null;
+      return;
+    }
+    composeWatchRef.current?.();
+    composeWatchRef.current = watchInbox((body) => {
+      if (stateRef.current.busy) return;
+      archiveInbox(body);
+      clearInbox();
+      setDraftPending(false);
+      setComposeWatch(false);
+      void runMission(body);
+    });
+    return () => {
+      composeWatchRef.current?.();
+      composeWatchRef.current = null;
+    };
+  }, [composeWatch, runMission]);
+
   const handleSlash = useCallback(
     async (raw: string) => {
+      const { dispatchSharedSlash } = await import("../cli/slashCommands.js");
+      const shared = await dispatchSharedSlash(raw, {
+        host: "tui",
+        lens: stateRef.current.lens,
+        workspace: stateRef.current.workspace,
+        rhythm: stateRef.current.rhythm,
+        lastUserPrompt: stateRef.current.lastUserPrompt,
+        historyUserPrompt:
+          [...stateRef.current.history]
+            .reverse()
+            .find((m) => m.role === "user")?.content ?? "",
+      });
+      if (shared.kind === "ok") {
+        const lines = shared.lines.filter((l) => !l.startsWith("__REDO_EDIT__:"));
+        if (lines.length) pushSystem(lines.join("\n"));
+        const edit = shared.lines.find((l) => l.startsWith("__REDO_EDIT__:"));
+        if (edit) setInput(edit.slice("__REDO_EDIT__:".length));
+        if (shared.patch?.lens) setLens(shared.patch.lens);
+        if (shared.patch?.rhythm) setRhythm(shared.patch.rhythm);
+        if (shared.patch?.locale || shared.patch?.boot) setConfig(loadConfig());
+        const { cmd: scmd, rest: srest } = (
+          await import("../cli/slashCommands.js")
+        ).parseSlash(raw);
+        if (
+          (scmd === "compose" || scmd === "inbox") &&
+          (srest[0] === "watch" || srest[0] === "auto")
+        ) {
+          setComposeWatch(true);
+        }
+        if (
+          (scmd === "compose" || scmd === "inbox") &&
+          (srest[0] === "nowatch" || srest[0] === "stop")
+        ) {
+          setComposeWatch(false);
+        }
+        return;
+      }
+      if (shared.kind === "mission") {
+        await runMission(
+          shared.prompt,
+          undefined,
+          undefined,
+          shared.deepMode,
+          shared.redo ? { redo: true } : undefined,
+        );
+        return;
+      }
+
       const [cmd, ...rest] = raw.slice(1).split(/\s+/);
       switch (cmd) {
         case "help":
@@ -958,7 +1130,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
               onStatus: (msg) => setStatus(msg),
               onEvent: (ev) => {
                 setFeed((f) => [
-                  ...f.slice(-300),
+                  ...f.slice(-FEED_CAP),
                   { id: nid(), kind: "event", event: ev },
                 ]);
                 setStatus(ev.summary.slice(0, 60));
@@ -980,6 +1152,27 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
         }
         case "compose":
         case "inbox": {
+          const arg = rest.join(" ").trim().toLowerCase();
+          if (arg === "watch" || arg === "auto") {
+            ensureInbox();
+            openInboxExternal();
+            setComposeWatch(true);
+            pushSystem(
+              [
+                "Compose watch ON — save inbox.md and it will auto-/send.",
+                `File: ${inboxPath()}`,
+                "Cancel with /compose nowatch",
+              ].join("\n"),
+            );
+            setStatus("compose watch · save to send");
+            break;
+          }
+          if (arg === "nowatch" || arg === "stop") {
+            setComposeWatch(false);
+            pushSystem("Compose watch OFF");
+            setStatus("ready");
+            break;
+          }
           ensureInbox();
           const opened = openInboxExternal();
           pushSystem(
@@ -988,9 +1181,11 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
               `File: ${opened.path}`,
               `Opened with: ${opened.how}`,
               "Write your message below the line, save, then type /send",
+              "Tip: /compose watch — auto-send on save",
             ].join("\n"),
           );
           setStatus("compose · edit inbox.md · /send");
+          setDraftPending(inboxHasDraft());
           break;
         }
         case "send": {
@@ -1003,6 +1198,8 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
           }
           archiveInbox(body);
           clearInbox();
+          setDraftPending(false);
+          setComposeWatch(false);
           await runMission(body);
           break;
         }
@@ -1010,18 +1207,13 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
         case "فارسی": {
           const next = saveConfig({ locale: "fa" });
           setConfig(next);
-          ensureInbox();
-          const opened = openInboxExternal();
           pushSystem(
             [
               "fa-reply on · UI stays English.",
-              "Type Persian in a GUI editor (not the TTY):",
-              `  ${opened.path}`,
-              `Opened: ${opened.how} · then /send`,
-              "Or keep typing English here; replies will be Persian.",
+              "Type here normally, or /compose to write Persian in a GUI editor then /send.",
             ].join("\n"),
           );
-          setStatus("fa-reply · /compose · /send");
+          setStatus("fa-reply");
           break;
         }
         case "en":
@@ -1084,6 +1276,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
           break;
         }
         case "redo":
+        case "redo!":
         case "retry": {
           const prompt =
             stateRef.current.lastUserPrompt ||
@@ -1093,6 +1286,26 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
             "";
           if (!prompt.trim()) {
             pushSystem("Nothing to redo yet.");
+            break;
+          }
+          const force =
+            cmd === "redo!" ||
+            cmd === "retry" ||
+            rest[0] === "!" ||
+            rest[0] === "go";
+          if (!force) {
+            const preview =
+              prompt.length > 400 ? `${prompt.slice(0, 400)}…` : prompt;
+            pushSystem(
+              [
+                "redo preview — edit below, then Enter to send.",
+                "Or /redo! to resend unchanged.",
+                "───",
+                preview,
+              ].join("\n"),
+            );
+            setInput(prompt);
+            setStatus("redo · edit then Enter · /redo! unchanged");
             break;
           }
           await runMission(prompt, undefined, undefined, undefined, {
@@ -1245,6 +1458,10 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
     config.model || "default",
   );
 
+  if (!splashDone) {
+    return <Splash cols={cols} rows={rows} />;
+  }
+
   return (
     <Box flexDirection="column" width={cols} height={rows}>
       <Header
@@ -1284,8 +1501,13 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
       />
 
       {showHelp ? (
-        <Box borderStyle="single" borderColor={theme.border} paddingX={1}>
-          <Text color={theme.gold}>{helpText()}</Text>
+        <Box
+          flexDirection="column"
+          borderStyle="round"
+          borderColor={theme.borderModal}
+          paddingX={1}
+        >
+          <Text color={theme.text}>{helpText()}</Text>
         </Box>
       ) : null}
 
@@ -1408,6 +1630,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
         scrollInfo={scrollLines > 0 ? `📜 ${scrollPercent}%` : ""}
         feedLength={feed.length}
         sessionId={sessionId}
+        draftPending={draftPending}
       />
 
       <Prompt

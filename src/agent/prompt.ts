@@ -3,7 +3,6 @@ import { join } from "node:path";
 import type { LensDefinition } from "../lenses/index.js";
 import { readMemoryFile } from "../memory/files.js";
 import { recentMemoryForPrompt } from "../learn/memoryStore.js";
-import { projectMemoryForPrompt } from "../learn/projectMemory.js";
 import { listSkills } from "../skills/index.js";
 import { FA_SYSTEM_ADDENDUM, LEAN_ADDENDUM } from "../i18n/termFa.js";
 import {
@@ -11,6 +10,8 @@ import {
   shouldUseCarefulPrompt,
 } from "../profiles/privateCare.js";
 import { ATELIER_LENS_ID } from "../lenses/privateLenses.js";
+import { buildContextPack } from "./contextPack.js";
+import { activeProjectLabel } from "../learn/projectMemory.js";
 
 const SOUL = `You are Anique — a multi-domain terminal agent.
 One core. Many lenses. BYOK. Portable. Not an IDE clone and not a messaging gateway.
@@ -72,7 +73,12 @@ export function assembleSystemPrompt(opts: {
     `## Active lens: ${opts.lens.id} (${opts.lens.title})${opts.lens.private ? " [private]" : ""}\n${opts.lens.systemPrompt}`,
   );
   parts.push(`## Rhythm\nCurrent rhythm: **${opts.rhythm}**.`);
-  parts.push(`## Workspace\nWorking directory: ${opts.workspace}`);
+  const projectLabel = activeProjectLabel(opts.workspace);
+  parts.push(
+    `## Workspace\nWorking directory: ${opts.workspace}${
+      projectLabel ? `\nProject: **${projectLabel}** (named project — durable memory shared across its bound directories)` : ""
+    }`,
+  );
 
   const dnaPath = [
     join(opts.workspace, "ANIQUE.md"),
@@ -88,9 +94,22 @@ export function assembleSystemPrompt(opts: {
   parts.push(`## USER.md\n${userMem.slice(0, 3000)}`);
   parts.push(`## MEMORY (recent entries)\n${recentMemoryForPrompt(20)}`);
 
+  const wantsContext =
+    opts.lens.id === "code" ||
+    opts.lens.id === ATELIER_LENS_ID ||
+    Boolean(opts.lens.private);
+  if (wantsContext) {
+    const pack = buildContextPack(opts.workspace, {
+      includeProjectMemory: true,
+    });
+    if (pack.trim()) {
+      parts.push(`## Pre-turn context pack\n${pack}`);
+    }
+  }
+
   if (opts.lens.id === ATELIER_LENS_ID || opts.lens.private) {
     parts.push(
-      `## Project memory (atelier — durable for this workspace)\n${projectMemoryForPrompt(opts.workspace)}\n\nIf the map is empty, call project_ingest first.`,
+      `## Project memory note\nIf the map above is empty, call project_ingest first.`,
     );
   }
 

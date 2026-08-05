@@ -1,52 +1,96 @@
 /**
- * Modern theme — inspired by Catppuccin Mocha + Charm/Lipgloss aesthetics.
+ * "Aurora" theme — a true-color (hex) palette for a modern, premium TUI.
+ * Ink 5 forwards hex colors straight to chalk's truecolor renderer, so we
+ * lean on a cyan → violet → pink aurora identity instead of the flat
+ * 16-color ANSI palette most terminal apps default to.
  *
- * Teal is the "Anique brand color" (not gold).
- * User prompts = sky blue | Answer = teal | Think = faint
- * Modals use double borders with teal.
- * Status: green/red pass/fail, yellow active.
+ * User = sky blue | Anique = cyan/teal | Brand accents = violet + pink
+ * Status: green/red pass/fail, amber active/caution.
  */
+
+/** Raw swatches — the only place actual hex values live. */
+export const swatch = {
+  base: "#c7d0f0",
+  dim: "#6b7394",
+  faint: "#3b4261",
+
+  cyan: "#66d9ef",
+  cyanBright: "#9af0ff",
+  violet: "#bb9af7",
+  violetBright: "#d3bbff",
+  pink: "#ff79c6",
+  pinkBright: "#ffa3d7",
+  blue: "#7aa2f7",
+  blueBright: "#9dc0ff",
+
+  green: "#9ece6a",
+  greenBright: "#c3f27e",
+  amber: "#e0af68",
+  amberBright: "#ffc777",
+  red: "#f7768e",
+  redBright: "#ff8fa3",
+
+  white: "#f2f4ff",
+} as const;
+
+/** Cyan → violet → pink sweep used for wordmarks / hero highlights. */
+export const AURORA = [
+  swatch.cyan,
+  swatch.cyanBright,
+  swatch.violet,
+  swatch.violetBright,
+  swatch.pink,
+] as const;
+
+/** Calm cyan → blue sweep for quieter accents (rules, dividers). */
+export const HORIZON = [swatch.cyan, swatch.blue, swatch.violet] as const;
+
 export const theme = {
   // ── Surface & text ──
-  text: "white" as const,
-  textDim: "gray" as const,
-  faint: "gray" as const,
+  text: swatch.white,
+  textDim: swatch.dim,
+  faint: swatch.faint,
 
   // ── Borders ──
-  border: "cyan" as const,
-  borderDim: "gray" as const,
-  borderModal: "cyanBright" as const,
+  border: swatch.cyan,
+  borderDim: swatch.faint,
+  borderModal: swatch.violetBright,
 
   // ── Primary accents ──
-  primary: "cyan" as const,
-  primaryBright: "cyanBright" as const,
-  secondary: "blue" as const,
-  secondaryBright: "blueBright" as const,
-  tertiary: "whiteBright" as const,
+  primary: swatch.cyan,
+  primaryBright: swatch.cyanBright,
+  secondary: swatch.violet,
+  secondaryBright: swatch.violetBright,
+  tertiary: swatch.white,
 
   // ── Semantic ──
-  success: "green" as const,
-  successBright: "greenBright" as const,
-  warn: "yellow" as const,
-  warnBright: "yellowBright" as const,
-  error: "red" as const,
-  errorBright: "redBright" as const,
-  info: "cyan" as const,
+  success: swatch.green,
+  successBright: swatch.greenBright,
+  warn: swatch.amber,
+  warnBright: swatch.amberBright,
+  error: swatch.red,
+  errorBright: swatch.redBright,
+  info: swatch.cyan,
 
   // ── Special ──
-  evolve: "magenta" as const,
-  evolveBright: "magentaBright" as const,
-  learn: "yellow" as const,
-  learnBright: "yellowBright" as const,
-  model: "blue" as const,
-  active: "cyanBright" as const,
+  evolve: swatch.violet,
+  evolveBright: swatch.violetBright,
+  learn: swatch.amber,
+  learnBright: swatch.amberBright,
+  model: swatch.blue,
+  active: swatch.cyanBright,
 
-  // ── Legacy aliases (mapped to new palette) ──
-  goldBright: "cyanBright" as const,
-  gold: "cyan" as const,
-  amber: "yellowBright" as const,
-  heading: "cyanBright" as const,
-  accent: "cyan" as const,
-  muted: "gray" as const,
-  cyan: "cyan" as const,
+  // ── Brand accent (pink) — used sparingly for "wow" moments ──
+  accent: swatch.pink,
+  accentBright: swatch.pinkBright,
+
+  // ── Legacy aliases (kept so existing call-sites keep compiling) ──
+  goldBright: swatch.cyanBright,
+  gold: swatch.cyan,
+  amber: swatch.amberBright,
+  heading: swatch.cyanBright,
+  muted: swatch.dim,
+  cyan: swatch.cyan,
 } as const;
+
+export type ThemeColor = (typeof theme)[keyof typeof theme];

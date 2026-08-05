@@ -6,9 +6,9 @@ import {
   readdirSync,
   statSync,
 } from "node:fs";
-import { createHash } from "node:crypto";
 import { join, relative, basename } from "node:path";
 import { aniqueHome, ensureAniqueHome } from "../config/index.js";
+import { resolveProjectStoreKey } from "./namedProjects.js";
 
 export interface ProjectMap {
   workspace: string;
@@ -17,13 +17,16 @@ export interface ProjectMap {
   summary: string;
 }
 
-function projectKey(workspace: string): string {
-  return createHash("sha1").update(workspace).digest("hex").slice(0, 12);
-}
-
+/**
+ * Storage dir for a workspace's durable project memory. When the workspace
+ * is bound to a named project (see namedProjects.ts), storage is keyed by
+ * the project id (shared across every directory bound to that project) —
+ * otherwise it falls back to a stable per-path hash.
+ */
 export function projectStoreDir(workspace: string): string {
   ensureAniqueHome();
-  const dir = join(aniqueHome(), "private", "projects", projectKey(workspace));
+  const { key } = resolveProjectStoreKey(workspace);
+  const dir = join(aniqueHome(), "private", "projects", key);
   mkdirSync(dir, { recursive: true });
   return dir;
 }
@@ -51,9 +54,11 @@ export function appendProjectMemory(
   const date = new Date().toISOString().slice(0, 10);
   const block = `\n## [${date}] ${title.slice(0, 120)}\n${body.slice(0, 8000)}\n`;
   if (!existsSync(p)) {
+    const { project } = resolveProjectStoreKey(workspace);
+    const label = project ? project.name : basename(workspace);
     writeFileSync(
       p,
-      `# Project memory — ${basename(workspace)}\n\nDurable notes for atelier lens. Newer entries below.\n${block}`,
+      `# Project memory — ${label}\n\nDurable notes for this project. Newer entries below.\n${block}`,
       "utf8",
     );
     return;
@@ -191,4 +196,10 @@ export function listKnownProjects(): Array<{ key: string; path: string }> {
     }
   }
   return out;
+}
+
+/** Text for prompt injection when a named project owns this workspace. */
+export function activeProjectLabel(workspace: string): string | null {
+  const { project } = resolveProjectStoreKey(workspace);
+  return project ? project.name : null;
 }

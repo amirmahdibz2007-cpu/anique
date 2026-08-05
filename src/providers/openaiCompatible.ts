@@ -33,21 +33,69 @@ function assertKey(config: AniqueConfig): void {
   }
 }
 
+export function isRetryableStatus(status: number): boolean {
+  return status === 429 || status === 502 || status === 503 || status === 504;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function isNonRetryableProviderError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message;
+  if (msg.startsWith("Auth failed") || msg.startsWith("Payment required")) return true;
+  if (msg.startsWith("Model not set")) return true;
+  const m = msg.match(/Provider error (\d+)/);
+  if (m) {
+    const status = Number(m[1]);
+    return !isRetryableStatus(status);
+  }
+  return false;
+}
+
+/**
+ * Fetch chat completions with bounded retries for transient failures (429/502/503/504).
+ * 401/402 and other 4xx fail immediately with a clear message.
+ */
+async function fetchWithRetry(
+  config: AniqueConfig,
+  body: unknown,
+  opts?: { maxAttempts?: number },
+): Promise<Response> {
+  const maxAttempts = opts?.maxAttempts ?? 3;
+  let lastErr: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(endpoint(config), {
+        method: "POST",
+        headers: headers(config),
+        body: JSON.stringify(body),
+      });
+      if (res.ok) return res;
+
+      const text = await res.text();
+      const err = new Error(formatProviderError(res.status, text));
+      if (!isRetryableStatus(res.status)) throw err;
+      lastErr = err;
+    } catch (err) {
+      if (isNonRetryableProviderError(err)) throw err;
+      lastErr = err instanceof Error ? err : new Error(String(err));
+    }
+    if (attempt >= maxAttempts) break;
+    await sleep(Math.min(8000, 400 * 2 ** (attempt - 1)));
+  }
+  throw lastErr ?? new Error("Provider request failed");
+}
+
 /** Non-streaming completion (used as fallback / tests). */
 export async function chatComplete(
   config: AniqueConfig,
   req: Omit<ChatCompletionRequest, "stream">,
 ): Promise<ChatCompletionResult> {
   assertKey(config);
-  const res = await fetch(endpoint(config), {
-    method: "POST",
-    headers: headers(config),
-    body: JSON.stringify({ ...req, stream: false }),
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(formatProviderError(res.status, body));
-  }
+  const res = await fetchWithRetry(config, { ...req, stream: false });
   const data = (await res.json()) as {
     choices?: Array<{
       message?: ChatMessage;
@@ -66,22 +114,14 @@ export async function chatComplete(
 
 /**
  * Streaming chat completions (OpenAI-compatible SSE).
- * Yields content deltas and assembles tool calls.
+ * Retries the initial HTTP connect on 429/502/503; mid-stream failures keep partial content.
  */
 export async function* chatStream(
   config: AniqueConfig,
   req: Omit<ChatCompletionRequest, "stream">,
 ): AsyncGenerator<StreamChunk, ChatCompletionResult> {
   assertKey(config);
-  const res = await fetch(endpoint(config), {
-    method: "POST",
-    headers: headers(config),
-    body: JSON.stringify({ ...req, stream: true }),
-  });
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(formatProviderError(res.status, body));
-  }
+  const res = await fetchWithRetry(config, { ...req, stream: true });
   if (!res.body) {
     throw new Error("Provider returned no response body for stream.");
   }
@@ -93,83 +133,100 @@ export async function* chatStream(
   const toolCalls: ToolCall[] = [];
   let finishReason: string | null = null;
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
 
-    for (const rawLine of lines) {
-      const line = rawLine.trim();
-      if (!line || line.startsWith(":")) continue;
-      if (!line.startsWith("data:")) continue;
-      const payload = line.slice(5).trim();
-      if (payload === "[DONE]") {
-        yield { type: "done", finishReason };
-        continue;
-      }
-      try {
-        const json = JSON.parse(payload) as {
-          choices?: Array<{
-            delta?: {
-              content?: string | null;
-              tool_calls?: Array<{
-                index?: number;
-                id?: string;
-                type?: "function";
-                function?: { name?: string; arguments?: string };
-              }>;
-            };
-            finish_reason?: string | null;
-          }>;
-          error?: { message?: string };
-        };
-        if (json.error?.message) {
-          yield { type: "error", error: json.error.message };
-          throw new Error(json.error.message);
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (!line || line.startsWith(":")) continue;
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+        if (payload === "[DONE]") {
+          yield { type: "done", finishReason };
+          continue;
         }
-        const choice = json.choices?.[0];
-        if (!choice) continue;
-        if (choice.finish_reason) finishReason = choice.finish_reason;
-        const delta = choice.delta;
-        if (delta?.content) {
-          content += delta.content;
-          yield { type: "content", content: delta.content };
-        }
-        if (delta?.tool_calls) {
-          for (const tc of delta.tool_calls) {
-            const idx = tc.index ?? 0;
-            if (!toolCalls[idx]) {
-              toolCalls[idx] = {
-                id: tc.id ?? `call_${idx}`,
-                type: "function",
-                function: { name: tc.function?.name ?? "", arguments: "" },
+        try {
+          const json = JSON.parse(payload) as {
+            choices?: Array<{
+              delta?: {
+                content?: string | null;
+                tool_calls?: Array<{
+                  index?: number;
+                  id?: string;
+                  type?: "function";
+                  function?: { name?: string; arguments?: string };
+                }>;
               };
-            } else {
-              if (tc.id) toolCalls[idx].id = tc.id;
-              if (tc.function?.name) {
-                toolCalls[idx].function.name += tc.function.name;
-              }
-            }
-            if (tc.function?.arguments) {
-              toolCalls[idx].function.arguments += tc.function.arguments;
-            }
-            yield {
-              type: "tool_call_delta",
-              toolCall: {
-                index: idx,
-                id: toolCalls[idx].id,
-                function: { ...toolCalls[idx].function },
-              },
-            };
+              finish_reason?: string | null;
+            }>;
+            error?: { message?: string };
+          };
+          if (json.error?.message) {
+            yield { type: "error", error: json.error.message };
+            throw new Error(json.error.message);
           }
+          const choice = json.choices?.[0];
+          if (!choice) continue;
+          if (choice.finish_reason) finishReason = choice.finish_reason;
+          const delta = choice.delta;
+          if (delta?.content) {
+            content += delta.content;
+            yield { type: "content", content: delta.content };
+          }
+          if (delta?.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              const idx = tc.index ?? 0;
+              if (!toolCalls[idx]) {
+                toolCalls[idx] = {
+                  id: tc.id ?? `call_${idx}`,
+                  type: "function",
+                  function: { name: tc.function?.name ?? "", arguments: "" },
+                };
+              } else {
+                if (tc.id) toolCalls[idx].id = tc.id;
+                if (tc.function?.name) {
+                  toolCalls[idx].function.name += tc.function.name;
+                }
+              }
+              if (tc.function?.arguments) {
+                toolCalls[idx].function.arguments += tc.function.arguments;
+              }
+              yield {
+                type: "tool_call_delta",
+                toolCall: {
+                  index: idx,
+                  id: toolCalls[idx].id,
+                  function: { ...toolCalls[idx].function },
+                },
+              };
+            }
+          }
+        } catch (err) {
+          if (err instanceof SyntaxError) continue;
+          throw err;
         }
-      } catch (err) {
-        if (err instanceof SyntaxError) continue;
-        throw err;
       }
     }
+  } catch (err) {
+    // Mid-stream failure: return partial so callers can keep it in the feed
+    if (content.trim()) {
+      const message: ChatMessage = {
+        role: "assistant",
+        content,
+      };
+      if (toolCalls.length > 0) message.tool_calls = toolCalls;
+      yield {
+        type: "error",
+        error: `${err instanceof Error ? err.message : String(err)} · partial kept`,
+      };
+      return { message, finishReason: finishReason ?? "error" };
+    }
+    throw err;
   }
 
   const message: ChatMessage = {

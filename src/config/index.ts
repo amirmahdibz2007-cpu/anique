@@ -10,6 +10,7 @@ import {
 
 export type ApprovalMode = "suggest" | "allowlist" | "auto";
 export type ProviderId = "openrouter" | "openai" | "anthropic" | "ollama" | "custom";
+export type BootMode = "resume-last" | "picker" | "new";
 
 export interface AniqueConfig {
   provider: ProviderId;
@@ -29,6 +30,11 @@ export interface AniqueConfig {
   locale: "en" | "fa";
   /** Lean mode: aggressive token saving for the rest of the session */
   leanMode: boolean;
+  /**
+   * TUI boot when no --session is given.
+   * resume-last (default) | picker | new
+   */
+  boot: BootMode;
 }
 
 export const PROVIDER_PRESETS: Record<
@@ -74,6 +80,7 @@ const DEFAULTS: AniqueConfig = {
   learning: "on",
   locale: "en",
   leanMode: false,
+  boot: "resume-last",
 };
 
 export function aniqueHome(): string {

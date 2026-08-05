@@ -2,6 +2,7 @@ import React from "react";
 import { Box, Text, useInput } from "ink";
 import type { ApprovalDecision, RiskLevel } from "../../safety/approval.js";
 import { theme } from "../theme.js";
+import { Pill } from "../widgets.js";
 
 export function ApprovalModal(props: {
   prompt: string;
@@ -13,7 +14,13 @@ export function ApprovalModal(props: {
   onDecide: (d: ApprovalDecision) => void;
 }): React.ReactElement {
   useInput((input, key) => {
+    // Enter / y = approve this action once (safe default)
     if (key.return || input === "y" || input === "Y") {
+      props.onDecide("once");
+      return;
+    }
+    // Explicit unlock for the whole session
+    if (input === "u" || input === "U") {
       props.onDecide("unlock");
       return;
     }
@@ -45,23 +52,24 @@ export function ApprovalModal(props: {
     <Box
       flexDirection="column"
       borderStyle="double"
-      borderColor={theme.warn}
+      borderColor={theme.warnBright}
       paddingX={1}
       marginY={0}
     >
       <Text bold color={theme.warnBright}>
-        ⚠ approval needed
+        ⚡ approval needed
         {props.tool ? ` · ${props.tool}` : ""}
       </Text>
       {props.risk ? (
         <Text>
-          <Text color={riskColor} bold>{props.risk}</Text>
+          <Pill label={props.risk} bg={riskColor} />
           {props.permissionMode ? (
             <Text color={theme.textDim}> · {props.permissionMode}</Text>
           ) : null}
           {props.sessionAllowCount != null ? (
             <Text color={theme.textDim}>
-              {" "}· {props.sessionAllowCount} allowed
+              {" "}
+              · {props.sessionAllowCount} allowed
             </Text>
           ) : null}
         </Text>
@@ -69,7 +77,7 @@ export function ApprovalModal(props: {
       <Text>{props.prompt}</Text>
       {props.preview ? (
         <Box
-          borderStyle="single"
+          borderStyle="round"
           borderColor={theme.borderDim}
           paddingX={1}
           flexDirection="column"
@@ -78,11 +86,12 @@ export function ApprovalModal(props: {
           <Text color={theme.text}>{props.preview.slice(0, 280)}</Text>
         </Box>
       ) : null}
+      <Text> </Text>
       <Text bold color={theme.successBright}>
-        [Enter] unlock session
+        ▸ [Enter/y] approve once
       </Text>
       <Text color={theme.textDim}>
-        [s] session allow · [a] always · [n] deny
+        [s] session · [a] always · [u] unlock ALL (dangerous) · [n] deny
       </Text>
     </Box>
   );

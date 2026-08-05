@@ -68,8 +68,8 @@ export function ModelsPicker(props: {
         const sel = row.id === props.selectedId;
         return (
           <Text key={row.id} color={active ? theme.primaryBright : undefined} bold={active}>
-            {active ? "›" : " "} {String(idx + 1).padStart(2)}.{" "}
-            {sel ? "★" : " "}
+            {active ? "▸" : " "} {String(idx + 1).padStart(2)}.{" "}
+            {sel ? <Text color={theme.successBright}>★ </Text> : "  "}
             {row.label}
             {row.hint ? <Text color={theme.textDim}> {row.hint}</Text> : null}
           </Text>

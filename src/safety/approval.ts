@@ -199,18 +199,19 @@ export async function askApprovalDecision(
     req.prompt,
     req.risk ? `  risk=${req.risk}` : "",
     req.preview ? `  preview: ${req.preview.slice(0, 120)}` : "",
-    "  [Enter]unlock-all [s]session [a]always [n]deny › ",
+    "  [Enter/y]once [s]session [a]always [u]unlock-all [n]deny › ",
   ].filter(Boolean);
   const answer = await new Promise<string>((resolve) => {
     rl.question(lines.join("\n"), resolve);
   });
   rl.close();
   const a = answer.trim().toLowerCase();
-  // Default / y / yes = unlock the whole session (run everything freely).
-  if (!a || a === "y" || a === "yes" || a === "u" || a === "unlock") return "unlock";
+  // Default / y = approve this action once (safe). Full unlock requires explicit [u].
+  if (!a || a === "y" || a === "yes" || a === "once") return "once";
+  if (a === "u" || a === "unlock") return "unlock";
   if (a === "s" || a === "session") return "session";
   if (a === "a" || a === "always") return "always";
-  if (req.risk === "workspace_write" && (a === " " || a === "" || a === "w" || a === "all")) {
+  if (req.risk === "workspace_write" && (a === "w" || a === "all" || a === "workspace")) {
     return "workspace";
   }
   return "deny";
@@ -239,10 +240,11 @@ export function applyApprovalDecision(
     grantWorkspaceWriteAllow();
     return true;
   }
-  if (decision === "once" || decision === "session") {
-    // once also registers a session allow for this exact action, so the
-    // same command/file being repeated later in a session does not ask
-    // again. session uses the same key (which is description-scoped).
+  if (decision === "once") {
+    // Allow this single action only — do not grant session allow.
+    return true;
+  }
+  if (decision === "session") {
     grantSessionAllow(opts.sessionKey);
     return true;
   }

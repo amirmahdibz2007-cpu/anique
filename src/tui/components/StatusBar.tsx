@@ -11,6 +11,7 @@ export function StatusBar(props: {
   scrollInfo?: string;
   feedLength?: number;
   sessionId?: string;
+  draftPending?: boolean;
 }): React.ReactElement {
   const spin = useSpinner(props.busy);
 
@@ -24,16 +25,34 @@ export function StatusBar(props: {
 
   return (
     <Box justifyContent="space-between" width={props.width} paddingX={1}>
-      <Text color={statusColor}>
-        {props.busy ? spin : "○"} {props.status}
-        {props.scrollInfo ? ` · ${props.scrollInfo}` : ""}
-      </Text>
-      <Text color={theme.textDim}>
-        {props.busy ? "Esc" : ""}
-        {!props.busy && props.unlocked ? "🔓" : ""}
-        {props.feedLength ? ` ${props.feedLength}L` : ""}
-        {props.sessionId ? ` · ${props.sessionId.slice(0, 8)}` : ""}
-      </Text>
+      <Box flexGrow={1} flexShrink={1} overflow="hidden">
+        <Text color={statusColor} wrap="truncate-end">
+          {props.busy ? (
+            <Text color={theme.accent} bold>
+              {spin}
+            </Text>
+          ) : (
+            "◈"
+          )}{" "}
+          {props.status}
+          {props.scrollInfo ? (
+            <Text color={theme.textDim}> · {props.scrollInfo}</Text>
+          ) : null}
+          {props.draftPending ? (
+            <Text color={theme.warn}> · ✎ draft pending · /send</Text>
+          ) : null}
+        </Text>
+      </Box>
+      <Box flexShrink={0}>
+        <Text color={theme.textDim} wrap="truncate-end">
+          {props.busy ? <Text color={theme.warnBright}>Esc to stop</Text> : ""}
+          {!props.busy && props.unlocked ? (
+            <Text color={theme.warnBright}>🔓 unlocked</Text>
+          ) : null}
+          {props.feedLength ? ` · ${props.feedLength}L` : ""}
+          {props.sessionId ? ` · ⬡${props.sessionId.slice(0, 8)}` : ""}
+        </Text>
+      </Box>
     </Box>
   );
 }

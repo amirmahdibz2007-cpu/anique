@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import type { AniqueConfig } from "../config/index.js";
 import { chatComplete } from "../providers/openaiCompatible.js";
 import type { ChatMessage } from "../providers/types.js";
@@ -11,6 +13,42 @@ import {
   type DeepPlanTask,
 } from "../safety/interaction.js";
 import { clearTodos, todoUpdate, todoWrite } from "./todos.js";
+import { readMemoryFile } from "../memory/files.js";
+import { recentMemoryForPrompt } from "../learn/memoryStore.js";
+
+/**
+ * Condensed "what Anique already knows" block for triage/planning calls.
+ * Without this, clarify questions and deep plans are generated blind — the
+ * model has no USER.md / MEMORY / workspace facts and asks basic questions
+ * that feel like it has no memory at all.
+ */
+function buildKnownContext(workspace?: string): string {
+  const parts: string[] = [];
+
+  const userMem = readMemoryFile("user").trim();
+  if (userMem) parts.push(`### USER.md\n${userMem.slice(0, 1200)}`);
+
+  const recent = recentMemoryForPrompt(8).trim();
+  if (recent) parts.push(`### Recent MEMORY\n${recent.slice(0, 1500)}`);
+
+  if (workspace) {
+    const dnaPath = [
+      join(workspace, "ANIQUE.md"),
+      join(workspace, "PRISM.md"),
+    ].find((p) => existsSync(p));
+    if (dnaPath) {
+      parts.push(
+        `### Workspace DNA (${dnaPath.split("/").pop()})\n${readFileSync(dnaPath, "utf8").slice(0, 1500)}`,
+      );
+    }
+  }
+
+  if (!parts.length) return "";
+  return [
+    "## What Anique already knows (do NOT re-ask about this)",
+    ...parts,
+  ].join("\n\n");
+}
 
 export type { DeepPlan, DeepPlanTask, ClarifyQuestion };
 export type DeepMode = "auto" | "force" | "off";
@@ -45,6 +83,7 @@ export async function triagePrompt(
   config: AniqueConfig,
   prompt: string,
   clarifications?: string,
+  workspace?: string,
 ): Promise<TriageResult> {
   // Short clear requests: skip triage entirely
   if (!clarifications && heuristicSimple(prompt)) {
@@ -56,16 +95,23 @@ export async function triagePrompt(
     };
   }
 
+  const known = buildKnownContext(workspace);
+
   // Longer requests: ask only high-signal questions (refined prompt)
   const user = [
     "Classify this request. Be decisive — only ask questions when truly blocked.",
     "Rules: 0 questions unless a decision fork changes architecture, risks, or scope drastically.",
+    "Never ask about facts already given in 'What Anique already knows' below — use them.",
     "Return ONLY JSON:",
     `{"complexity":"simple"|"complex","clarity":"clear"|"ambiguous","questions":[],"reason":"..."}`,
     "",
+    known,
+    known ? "" : "",
     `Request:\n${prompt}`,
     clarifications ? `\nUser answers:\n${clarifications}` : "",
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   try {
     const res = await chatComplete(config, {
@@ -75,7 +121,7 @@ export async function triagePrompt(
         {
           role: "system",
           content:
-            "You are Anique triage. Be decisive. Ask questions only when a decision fork truly blocks progress. JSON only.",
+            "You are Anique triage. Be decisive. Ask questions only when a decision fork truly blocks progress — never about things already known from memory/context. JSON only.",
         },
         { role: "user", content: user },
       ],
@@ -106,7 +152,9 @@ export async function buildDeepPlan(
   prompt: string,
   clarifications: string,
   editNote?: string,
+  workspace?: string,
 ): Promise<DeepPlan> {
+  const known = buildKnownContext(workspace);
   const user = [
     "Break this request into a clean sequential plan for a coding agent.",
     "Return ONLY JSON:",
@@ -115,13 +163,17 @@ export async function buildDeepPlan(
     "- Max 8 tasks; each task one concrete outcome with acceptance criteria",
     "- Prefer asking questions over guessing missing requirements (max 3)",
     "- Each question MUST have a real prompt (never just 'Clarify') and 2–4 choices",
+    "- NEVER ask about facts already given in 'What Anique already knows' below",
     "- Mark risky=true if task likely needs destructive shell",
     "- depends_on uses task ids",
     "",
+    known,
     `Request:\n${prompt}`,
     clarifications ? `\n${clarifications}` : "",
     editNote ? `\nPlanner edit note from user:\n${editNote}` : "",
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   const res = await chatComplete(config, {
     model: config.model,
@@ -130,7 +182,7 @@ export async function buildDeepPlan(
       {
         role: "system",
         content:
-          "You are Anique planner. JSON only. Clean decomposition. Do not invent requirements — ask with real prompts and choices.",
+          "You are Anique planner. JSON only. Clean decomposition. Do not invent requirements — ask with real prompts and choices, but never about things already known from memory/context.",
       },
       { role: "user", content: user },
     ],
@@ -261,20 +313,21 @@ export async function prepareDeepPlan(opts: {
   config: AniqueConfig;
   prompt: string;
   mode: DeepMode;
+  workspace?: string;
   onStatus?: (msg: string) => void;
 }): Promise<
   | { kind: "skip" }
   | { kind: "cancel" }
   | { kind: "plan"; plan: DeepPlan; clarifications: string }
 > {
-  const { config, prompt, mode } = opts;
+  const { config, prompt, mode, workspace } = opts;
   if (mode === "off") return { kind: "skip" };
 
   let clarifications = "";
 
   // Fast triage: one round, quick decision
   if (mode !== "force") {
-    const triage = await triagePrompt(config, prompt);
+    const triage = await triagePrompt(config, prompt, undefined, workspace);
     if (triage.questions.length) {
       const answers = await askClarify(triage.questions);
       if (answers.some((a) => a.answer === "(cancelled)")) return { kind: "cancel" };
@@ -284,7 +337,7 @@ export async function prepareDeepPlan(opts: {
   } else {
     // /deep: more thorough
     opts.onStatus?.("triage");
-    const triage = await triagePrompt(config, prompt);
+    const triage = await triagePrompt(config, prompt, undefined, workspace);
     if (triage.questions.length) {
       const answers = await askClarify(triage.questions);
       if (answers.some((a) => a.answer === "(cancelled)")) return { kind: "cancel" };
@@ -293,7 +346,7 @@ export async function prepareDeepPlan(opts: {
   }
 
   opts.onStatus?.("planning");
-  let plan = await buildDeepPlan(config, prompt, clarifications);
+  let plan = await buildDeepPlan(config, prompt, clarifications, undefined, workspace);
 
   if (plan.questions?.length) {
     opts.onStatus?.("waiting on you · planning");
@@ -301,7 +354,7 @@ export async function prepareDeepPlan(opts: {
     if (answers.some((a) => a.answer === "(cancelled)")) return { kind: "cancel" };
     clarifications = [clarifications, formatClarifyBlock(answers)]
       .filter(Boolean).join("\n");
-    plan = await buildDeepPlan(config, prompt, clarifications);
+    plan = await buildDeepPlan(config, prompt, clarifications, undefined, workspace);
   }
 
   opts.onStatus?.("approve plan");
@@ -309,7 +362,7 @@ export async function prepareDeepPlan(opts: {
   if (decision.action === "cancel") return { kind: "cancel" };
   if (decision.action === "edit") {
     // One quick re-plan with edit note; no re-approval
-    plan = await buildDeepPlan(config, prompt, clarifications, decision.note);
+    plan = await buildDeepPlan(config, prompt, clarifications, decision.note, workspace);
     const d2 = await askPlanApproval(plan);
     if (d2.action !== "approve") return { kind: "cancel" };
   }

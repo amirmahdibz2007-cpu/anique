@@ -60,8 +60,7 @@ assert.deepEqual(
   ].sort(),
 );
 
-// Approval UX: once / workspace now register a session allow so the same
-// (or any workspace_write) action is not re-asked within a session.
+// Approval UX: once = this action only; session = remember key; unlock = everything.
 for (const fn of [
   clearSessionAllows,
   clearWorkspaceWriteAllow,
@@ -71,7 +70,9 @@ for (const fn of [
 const k = sessionAllowKey("workspace_write", "write /tmp/proj/a.ts");
 assert.equal(hasSessionAllow(k), false);
 assert.equal(applyApprovalDecision("once", { sessionKey: k }), true);
-assert.equal(hasSessionAllow(k), true, "once registers a session allow for the same action");
+assert.equal(hasSessionAllow(k), false, "once does NOT register session allow");
+assert.equal(applyApprovalDecision("session", { sessionKey: k }), true);
+assert.equal(hasSessionAllow(k), true, "session registers allow for same action");
 clearSessionAllows();
 
 const k2 = sessionAllowKey("workspace_write", "write /tmp/proj/b.ts");

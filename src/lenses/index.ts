@@ -70,7 +70,7 @@ const LENS_META: Record<
     id: "code",
     title: "Code",
     description: "Repository work: edit, test, git, debug",
-    tools: [...COMMON_TOOLS, "git_status", "git_diff", "git_commit", "run_tests"],
+    tools: [...CODE_TOOLS],
     promptFile: "code.md",
   },
   daily: {
