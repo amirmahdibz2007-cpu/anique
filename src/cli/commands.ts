@@ -113,7 +113,7 @@ ${chalk.bold("Slash commands")}
   /undo              Revert last agent file changes (git)
   /permissions       suggest | allowlist | auto
   /trace /sessions /resume /export
-  /skill save <name> /evolve /clear /quit
+  /skill save <name> /evolve /self /clear /quit
   /learn             Propose learnings from last mission (LearnCard)
   /learn on|off      Sticky auto-learn after missions
   /fa  /en           Persian / English replies (UI stays English)
@@ -482,6 +482,101 @@ export function registerCommands(program: Command): void {
         );
       },
     );
+
+  program
+    .command("self")
+    .description(
+      "Private self-upgrade section (not a lens, not listed): workspace locks to Anique source, extra-cautious",
+    )
+    .argument("[prompt...]", "What to improve (optional → opens the section)")
+    .option("--plan", "Plan first (recommended for big changes)")
+    .option(
+      "--source <path>",
+      "Override Anique source root (default: this install)",
+    )
+    .action(
+      async (
+        promptParts: string[],
+        opts: { plan?: boolean; source?: string },
+      ) => {
+        const source = opts.source
+          ? resolve(opts.source)
+          : aniqueSourceRoot();
+        const prompt = promptParts.join(" ").trim();
+        const { selfBriefPath } = await import("../self/brief.js");
+        console.log(
+          chalk.bold("\n══ Self-upgrade ══") +
+            chalk.dim(
+              "  private · owner-only · plan-first · verify-after-every-edit\n",
+            ),
+        );
+        console.log(chalk.dim(`source  → ${source}`));
+        console.log(chalk.dim(`brief   → ${selfBriefPath()} (never committed)`));
+
+        if (!prompt) {
+          if (process.stdout.isTTY) {
+            const { startTui } = await import("../tui/App.js");
+            await startTui({
+              lens: "self",
+              workspace: source,
+              rhythm: opts.plan ? "plan" : "act",
+            });
+          } else {
+            await runRepl({
+              lens: "self",
+              workspace: source,
+              rhythm: opts.plan ? "plan" : "act",
+            });
+          }
+          return;
+        }
+
+        const config = loadConfig();
+        banner("self", opts.plan ? "plan" : "act", source);
+        const result = await runAgent({
+          config,
+          lensId: "self",
+          workspace: source,
+          userMessage: prompt,
+          rhythm: opts.plan ? "plan" : "act",
+        });
+        console.log(
+          chalk.dim(
+            `\nself-upgrade session ${result.sessionId} · steps ${result.steps}`,
+          ),
+        );
+        console.log(
+          chalk.yellow(
+            "If src/ changed: restart anique after a successful rebuild_anique.",
+          ),
+        );
+      },
+    );
+
+  program
+    .command("web")
+    .description("Start personal localhost Web UI (RTL-friendly, Persian input works)")
+    .option("--port <number>", "Port to listen on (default: 7470)", "7470")
+    .option("--lens <id>", "Lens to use (default: from config)")
+    .option("--no-open", "Don't auto-open browser")
+    .action(async (opts: { port: string; lens?: string; open: boolean }) => {
+      const config = loadConfig();
+      if (!isConfigured(config)) {
+        console.error(chalk.red("Anique is not configured. Run: anique setup"));
+        process.exit(1);
+      }
+      const lensId = opts.lens ?? config.defaultLens ?? "code";
+      const workspace = cwd();
+      const port = parseInt(opts.port, 10) || 7470;
+      const { startWebServer } = await import("../server/index.js");
+      await startWebServer({
+        config,
+        lensId,
+        workspace,
+        port,
+        openBrowser: opts.open !== false,
+      });
+    });
 
   program
     .command("lens")
@@ -1260,6 +1355,41 @@ async function runRepl(state: {
                   lensId: "evolve",
                   workspace: state.workspace,
                   userMessage: evolvePrompt,
+                  rhythm: state.rhythm,
+                  sessionId,
+                  history,
+                });
+                sessionId = result.sessionId;
+                lastAssistant = result.finalText;
+                history = result.messages.filter((m) => m.role !== "system");
+                console.log(
+                  chalk.dim(
+                    `\n— ${result.sessionId} · ${result.steps} steps · restart after rebuild\n`,
+                  ),
+                );
+                rl.resume();
+              }
+              break;
+            }
+            case "self": {
+              state.lens = "self";
+              state.workspace = aniqueSourceRoot();
+              const { selfBriefPath } = await import("../self/brief.js");
+              console.log(
+                chalk.magenta(
+                  `self-upgrade (private) · workspace locked to ${state.workspace}`,
+                ),
+              );
+              console.log(chalk.dim(`brief → ${selfBriefPath()} (never committed)`));
+              banner(state.lens, state.rhythm, state.workspace);
+              const selfPrompt = rest.join(" ").trim();
+              if (selfPrompt) {
+                rl.pause();
+                const result = await runAgent({
+                  config: resolveRuntimeConfig(),
+                  lensId: "self",
+                  workspace: state.workspace,
+                  userMessage: selfPrompt,
                   rhythm: state.rhythm,
                   sessionId,
                   history,

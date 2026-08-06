@@ -1,7 +1,7 @@
 {
   "name": "anique",
   "version": "0.1.0",
-  "description": "Anique \u2014 multi-domain CLI agent with Lens modes",
+  "description": "Anique — multi-domain CLI agent with Lens modes",
   "type": "module",
   "bin": {
     "anique": "./dist/index.js"
@@ -27,7 +27,7 @@
     "e2e:sudo": "tsx --experimental-sqlite scripts/e2e-sudo.ts",
     "e2e:hard": "tsx --experimental-sqlite scripts/e2e-hard.ts",
     "test:scroll": "tsx --experimental-sqlite scripts/test-scroll-direction.ts",
-    "postbuild": "node -e \"import('node:fs').then(fs=>fs.chmodSync('dist/index.js',0o755))\""
+    "postbuild": "node scripts/copy-static.mjs"
   },
   "engines": {
     "node": ">=22"
@@ -41,12 +41,16 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@types/express": "^5.0.6",
+    "@types/ws": "^8.18.1",
     "chalk": "^5.4.1",
     "commander": "^13.1.0",
+    "express": "^5.2.1",
     "glob": "^11.0.1",
     "ink": "^5.2.1",
     "ink-text-input": "^6.0.0",
-    "react": "^18.3.1"
+    "react": "^18.3.1",
+    "ws": "^8.21.2"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",

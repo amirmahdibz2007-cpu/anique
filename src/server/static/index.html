@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fa" dir="auto">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Anique</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div id="sidebar-header">
+        <span id="logo">◆ ANIQUE</span>
+        <button id="new-chat-btn" title="New chat">＋</button>
+      </div>
+      <div id="session-list"></div>
+    </aside>
+
+    <!-- Main -->
+    <main id="main">
+      <div id="topbar">
+        <button id="sidebar-toggle" title="Toggle sidebar">☰</button>
+        <span id="session-title">New chat</span>
+        <span id="lens-badge" class="lens-badge" title="Active lens"></span>
+        <span id="status-dot" class="dot idle" title="idle"></span>
+      </div>
+
+      <div id="feed" role="log" aria-live="polite"></div>
+
+      <div id="input-area">
+        <textarea
+          id="input"
+          dir="auto"
+          placeholder="پیام بنویس... / Type a message..."
+          rows="3"
+          autofocus
+        ></textarea>
+        <div id="input-toolbar">
+          <div id="slash-btns">
+            <button class="slash-btn" data-cmd="/cost"    title="Show token cost">/cost</button>
+            <button class="slash-btn" data-cmd="/context" title="Context window usage">/context</button>
+            <button class="slash-btn" data-cmd="/compact" title="Summarise old history">/compact</button>
+            <button class="slash-btn" data-cmd="/undo"    title="Undo last file changes">/undo</button>
+          </div>
+          <div id="input-actions">
+            <button id="abort-btn" class="btn-abort" disabled title="Stop (Esc)">■</button>
+            <button id="send-btn" class="btn-send" title="Send (Ctrl+Enter)">Send ↵</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
