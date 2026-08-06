@@ -88,7 +88,7 @@ export function t(
       redo: "ارسال دوبارهٔ آخرین پیام",
       faOn: "حالت فارسی روشن · /en برای انگلیسی",
       faOff: "English mode · /fa for Persian",
-      hints: "Esc قطع · Esc Esc خروج · /redo · /fa · /sessions",
+      hints: "Esc قطع · Esc Esc خروج · /copy · /redo · /fa",
     };
     return fa[key] ?? key;
   }
@@ -105,7 +105,7 @@ export function t(
     redo: "redo · last message",
     faOn: "Persian mode on · /en for English",
     faOff: "English mode · /fa for Persian",
-    hints: "Esc interrupt · Esc Esc quit · /redo · /fa · /sessions",
+    hints: "Esc interrupt · Esc Esc quit · /copy · Ctrl+Y · /redo",
   };
   return en[key] ?? key;
 }

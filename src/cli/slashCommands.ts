@@ -25,6 +25,8 @@ import {
   unbindPath,
 } from "../learn/namedProjects.js";
 import { readProjectMemory, projectStoreDir } from "../learn/projectMemory.js";
+import { splitThinkAnswer } from "../agent/answerSanitize.js";
+import { copyToClipboard } from "../util/clipboard.js";
 
 export type SlashHost = "tui" | "classic";
 
@@ -35,6 +37,8 @@ export interface SlashContext {
   rhythm: "plan" | "act";
   lastUserPrompt?: string;
   historyUserPrompt?: string;
+  /** Latest assistant reply (for /copy, /skill save, …). */
+  lastAssistant?: string;
 }
 
 export type SlashOutcome =
@@ -60,7 +64,14 @@ export const SHARED_SLASH_COMMANDS = [
   "boot",
   "atelier",
   "project",
+  "copy",
 ] as const;
+
+/** Prefer visible answer (strip think blocks); fall back to raw. */
+export function replyTextForCopy(raw: string): string {
+  const { answer } = splitThinkAnswer(raw || "");
+  return (answer || raw || "").trim();
+}
 
 export function parseSlash(raw: string): { cmd: string; rest: string[] } {
   const [cmd = "", ...rest] = raw.replace(/^\//, "").trim().split(/\s+/);
@@ -352,6 +363,23 @@ export async function dispatchSharedSlash(
             2,
           ),
         ],
+      };
+    }
+    case "copy": {
+      const text = replyTextForCopy(ctx.lastAssistant || "");
+      if (!text) {
+        return { kind: "ok", lines: ["No assistant reply to copy yet."] };
+      }
+      const result = copyToClipboard(text);
+      if (result.ok) {
+        return {
+          kind: "ok",
+          lines: [`Copied last reply (${text.length} chars) via ${result.method}`],
+        };
+      }
+      return {
+        kind: "ok",
+        lines: [`Clipboard failed: ${result.error}`],
       };
     }
     default:

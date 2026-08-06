@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Text, useApp, useInput } from "ink";
 import { theme } from "./theme.js";
 import { loadConfig, saveConfig } from "../config/index.js";
-import { resolveRuntimeConfig } from "../config/runtime.js";
+import { resolveRuntimeConfig, setRuntimeModel } from "../config/runtime.js";
 import { describeLenses, getLens, listLensIds } from "../lenses/index.js";
 import { runAgent, type Rhythm } from "../agent/loop.js";
 import { aniqueSourceRoot } from "../meta/sourceRoot.js";
@@ -112,14 +112,14 @@ function helpText(): string {
   return [
     "◈ Slash  /deep /fast /new /sessions /models /profile /lens /plan /act /cost",
     "         /atelier /ingest /compose /send /fa /en /redo /learn /private /lean",
-    "         /versions /rollback /context /compact /todos /undo /export /quit",
+    "         /versions /rollback /context /compact /todos /undo /export /copy /quit",
     "         /project [status|new|bind|rename|unbind|list]",
     `◈ Lenses ${listLensIds().join(" · ")}`,
     "✦ atelier[private] deep-coding · /atelier then /ingest to learn this repo",
     "✦ fa/compose — Persian replies · GUI inbox · /compose watch auto-sends",
     "✦ project — /project new <name> = own memory+history, plus default memory",
     "▸ Scroll ↑/↓ PgUp/PgDn Alt/Shift+↑/↓ Home/End · Redo /redo edit · /redo! resend",
-    "▸ Keys   Enter send · Esc interrupt · Esc Esc quit · Ctrl+L clear · ? help",
+    "▸ Keys   Enter send · Esc interrupt · Esc Esc quit · Ctrl+L clear · Ctrl+Y copy · ? help",
   ].join("\n");
 }
 
@@ -180,6 +180,8 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
   const [rhythm, setRhythm] = useState<Rhythm>(props.rhythm);
   const [workspace, setWorkspace] = useState(props.workspace);
   const [input, setInput] = useState("");
+  const pastedBlocksRef = useRef<Map<string, string>>(new Map());
+  const pasteSeqRef = useRef(0);
   const [busy, setBusy] = useState(false);
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [streamBuf, setStreamBuf] = useState("");
@@ -509,6 +511,24 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
       setScrollLines(0);
       setStatus("feed cleared (history kept)");
     }
+    if (key.ctrl && (ch === "y" || ch === "\u0019")) {
+      void (async () => {
+        const { replyTextForCopy } = await import("../cli/slashCommands.js");
+        const { copyToClipboard } = await import("../util/clipboard.js");
+        const text = replyTextForCopy(stateRef.current.lastAssistant);
+        if (!text) {
+          setStatus("nothing to copy");
+          return;
+        }
+        const result = copyToClipboard(text);
+        setStatus(
+          result.ok
+            ? `copied (${text.length} chars · ${result.method})`
+            : `copy failed: ${result.error}`,
+        );
+      })();
+      return;
+    }
     const page = Math.max(5, Math.floor(feedHeight / 2));
     if (key.pageUp) {
       setScrollLines((s) => {
@@ -544,6 +564,51 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
     else if (inputEmpty && key.upArrow) scrollBy(3);
     else if (inputEmpty && key.downArrow) scrollBy(-3);
   });
+
+  /**
+   * Terminal pastes usually arrive as one big chunk with embedded newlines.
+   * Rendering that inline looks broken (single-line text box) and is hard to
+   * read, so collapse any multi-line insertion into a "[Pasted text …]"
+   * placeholder and keep the real content until submit time.
+   */
+  const collapsePastedInsert = useCallback((oldVal: string, newVal: string): string => {
+    if (newVal.length <= oldVal.length) return newVal;
+    const minLen = Math.min(oldVal.length, newVal.length);
+    let start = 0;
+    while (start < minLen && oldVal[start] === newVal[start]) start++;
+    let oldEnd = oldVal.length;
+    let newEnd = newVal.length;
+    while (
+      oldEnd > start &&
+      newEnd > start &&
+      oldVal[oldEnd - 1] === newVal[newEnd - 1]
+    ) {
+      oldEnd--;
+      newEnd--;
+    }
+    const inserted = newVal.slice(start, newEnd);
+    const lineCount = inserted.split("\n").length;
+    if (lineCount <= 1) return newVal;
+    const id = ++pasteSeqRef.current;
+    const placeholder = `[Pasted text #${id} +${lineCount} lines]`;
+    pastedBlocksRef.current.set(placeholder, inserted);
+    return newVal.slice(0, start) + placeholder + newVal.slice(newEnd);
+  }, []);
+
+  const handleInputChange = useCallback(
+    (next: string) => {
+      setInput((prev) => collapsePastedInsert(prev, next));
+    },
+    [collapsePastedInsert],
+  );
+
+  const expandPastedBlocks = useCallback((text: string): string => {
+    let out = text;
+    for (const [placeholder, raw] of pastedBlocksRef.current) {
+      if (out.includes(placeholder)) out = out.split(placeholder).join(raw);
+    }
+    return out;
+  }, []);
 
   const pushSystem = useCallback((text: string) => {
     setFeed((f) => [...f.slice(-FEED_CAP), { id: nid(), kind: "system", text }]);
@@ -729,6 +794,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
           [...stateRef.current.history]
             .reverse()
             .find((m) => m.role === "user")?.content ?? "",
+        lastAssistant: stateRef.current.lastAssistant,
       });
       if (shared.kind === "ok") {
         const lines = shared.lines.filter((l) => !l.startsWith("__REDO_EDIT__:"));
@@ -795,7 +861,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
           const arg = rest.join(" ").trim();
           if (arg && !arg.startsWith("+") && isModelReady()) {
             const model = resolveModelId(arg);
-            const next = saveConfig({ model });
+            const next = setRuntimeModel(model);
             setConfig(next);
             pushRecentModel(model);
             usageRef.current = createUsageTracker(model);
@@ -1395,7 +1461,9 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
   );
 
   const onSubmit = async (value: string) => {
-    const trimmed = value.trim();
+    const expanded = expandPastedBlocks(value);
+    pastedBlocksRef.current.clear();
+    const trimmed = expanded.trim();
     setInput("");
     if (!trimmed || stateRef.current.busy) return;
     if (bootGate !== "ready") return;
@@ -1611,7 +1679,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
             })();
           }}
           onSelect={(row) => {
-            const next = saveConfig({ model: row.id });
+            const next = setRuntimeModel(row.id);
             setConfig(next);
             pushRecentModel(row.id);
             usageRef.current = createUsageTracker(row.id);
@@ -1635,7 +1703,7 @@ export function AniqueTui(props: TuiProps): React.ReactElement {
 
       <Prompt
         value={input}
-        onChange={setInput}
+        onChange={handleInputChange}
         onSubmit={(v) => void onSubmit(v)}
         busy={busy || bootGate !== "ready"}
         modelsMode={modelsMode}

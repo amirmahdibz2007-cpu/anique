@@ -10,6 +10,7 @@ import {
   getActiveProfile,
   applyProfileToConfig,
   isModelReady,
+  upsertProfile,
 } from "../providers/profiles.js";
 
 export interface RuntimeConfig extends AniqueConfig {
@@ -48,12 +49,15 @@ export function runtimeIsReady(config = loadConfig()): boolean {
   return isModelReady(resolveRuntimeConfig(config));
 }
 
-/** Persist model change into both config.json and active profile when present. */
+/** Persist model change into both config.json and the active profile (providers.json). */
 export function setRuntimeModel(model: string): AniqueConfig {
-  const next = saveConfig({ model });
   const active = getActiveProfile();
   if (active) {
-    applyProfileToConfig({ ...active, model });
+    // upsertProfile writes providers.json AND syncs config.json, so the two
+    // never drift apart again (drift would otherwise make resolveRuntimeConfig
+    // silently revert to the old model on the very next turn).
+    upsertProfile({ ...active, model }, true);
+    return loadConfig();
   }
-  return loadConfig();
+  return saveConfig({ model });
 }

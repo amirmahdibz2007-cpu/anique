@@ -714,7 +714,9 @@ async function runAgentPass(opts: AgentRunOptions): Promise<AgentRunResult> {
   }
 
   // Surface any sudo commands that need the user's password.
-  const { pendingSudoCommands } = await import("../tools/registry.js");
+  const { pendingSudoCommands, clearPendingSudo } = await import(
+    "../tools/registry.js"
+  );
   const pendingSudo = pendingSudoCommands();
   if (pendingSudo.length > 0 && !aborted) {
     const block =
@@ -723,6 +725,9 @@ async function runAgentPass(opts: AgentRunOptions): Promise<AgentRunResult> {
       `\nRun them yourself, or re-run after authenticating.`;
     finalText = (finalText ? finalText.trimEnd() : "") + block;
     push("system", `${pendingSudo.length} sudo command(s) handed to user`);
+    // Report once per occurrence — otherwise this queue is process-lifetime
+    // state and would re-surface on every future unrelated turn forever.
+    clearPendingSudo();
   }
 
   if (toolCallCount >= 4 && !aborted) {

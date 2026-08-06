@@ -115,6 +115,7 @@ assert.equal(hist.history[0]?.role, "user");
 
 // --- Shared slash parity ---
 assert.ok((SHARED_SLASH_COMMANDS as readonly string[]).includes("fa"));
+assert.ok((SHARED_SLASH_COMMANDS as readonly string[]).includes("copy"));
 assert.equal(parseSlash("/Fa reply").cmd, "fa");
 const fa = await dispatchSharedSlash("/fa", {
   host: "classic",
@@ -124,6 +125,31 @@ const fa = await dispatchSharedSlash("/fa", {
 });
 assert.equal(fa.kind, "ok");
 assert.equal(loadConfig().locale, "fa");
+
+const copyEmpty = await dispatchSharedSlash("/copy", {
+  host: "classic",
+  lens: "code",
+  workspace: ws,
+  rhythm: "act",
+});
+assert.equal(copyEmpty.kind, "ok");
+assert.ok(
+  copyEmpty.kind === "ok" &&
+    copyEmpty.lines.some((l) => /no assistant reply/i.test(l)),
+);
+
+const copyOk = await dispatchSharedSlash("/copy", {
+  host: "tui",
+  lens: "code",
+  workspace: ws,
+  rhythm: "act",
+  lastAssistant: "hello from anique",
+});
+assert.equal(copyOk.kind, "ok");
+assert.ok(
+  copyOk.kind === "ok" &&
+    copyOk.lines.some((l) => /copied last reply/i.test(l) || /clipboard failed/i.test(l)),
+);
 
 const bootCmd = await dispatchSharedSlash("/boot picker", {
   host: "tui",

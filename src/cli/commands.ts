@@ -22,7 +22,7 @@ import {
   type AniqueConfig,
   type ProviderId,
 } from "../config/index.js";
-import { resolveRuntimeConfig } from "../config/runtime.js";
+import { resolveRuntimeConfig, setRuntimeModel } from "../config/runtime.js";
 import { describeLenses, getLens, listLensIds } from "../lenses/index.js";
 import { runAgent, type Rhythm } from "../agent/loop.js";
 import {
@@ -118,6 +118,7 @@ ${chalk.bold("Slash commands")}
   /learn on|off      Sticky auto-learn after missions
   /fa  /en           Persian / English replies (UI stays English)
   /compose  /send    Edit ~/.anique/inbox.md in a GUI editor, then send
+  /copy              Copy last assistant reply to clipboard (TUI: Ctrl+Y)
   /private           Owner careful profile (not public default)
   /versions          List prior file versions · /rollback <id>
   /redo              Resend last user message
@@ -562,6 +563,11 @@ export function registerCommands(program: Command): void {
         console.log(chalk.green("Saved provider preset"), value);
         return;
       }
+      if (k === "model") {
+        setRuntimeModel(value);
+        console.log(chalk.green("Saved"), chalk.dim(aniqueHome() + "/config.json"));
+        return;
+      }
       const partial: Partial<AniqueConfig> = {};
       if (k === "maxSteps") partial.maxSteps = Number(value);
       else if (k === "approvalMode") {
@@ -574,7 +580,6 @@ export function registerCommands(program: Command): void {
         partial.ui = value === "classic" ? "classic" : "tui";
       } else if (k === "apiKey") partial.apiKey = value;
       else if (k === "baseUrl") partial.baseUrl = value;
-      else if (k === "model") partial.model = value;
       else if (k === "defaultLens") partial.defaultLens = value;
 
       saveConfig(partial);
@@ -1030,6 +1035,7 @@ async function runRepl(state: {
             historyUserPrompt: [...history]
               .reverse()
               .find((m) => m.role === "user")?.content ?? "",
+            lastAssistant,
           });
           if (shared.kind === "quit") {
             rl.close();
@@ -1092,7 +1098,7 @@ async function runRepl(state: {
               const arg = rest.join(" ").trim();
               if (arg && !arg.startsWith("+") && isModelReady()) {
                 const model = resolveModelId(arg);
-                saveConfig({ model });
+                setRuntimeModel(model);
                 pushRecentModel(model);
                 console.log(chalk.green(`model → ${model}`));
                 break;

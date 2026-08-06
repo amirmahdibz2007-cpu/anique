@@ -2,7 +2,8 @@ import { createInterface } from "node:readline";
 import chalk from "chalk";
 import { ModelsFlow } from "../providers/modelsFlow.js";
 import { isModelReady } from "../providers/profiles.js";
-import { loadConfig, saveConfig } from "../config/index.js";
+import { loadConfig } from "../config/index.js";
+import { setRuntimeModel } from "../config/runtime.js";
 import { pushRecentModel, resolveModelId } from "../providers/models.js";
 
 function ask(rl: ReturnType<typeof createInterface>, q: string): Promise<string> {
@@ -20,7 +21,7 @@ export async function runModelWizard(opts?: {
 }): Promise<void> {
   if (opts?.quickModel && isModelReady()) {
     const model = resolveModelId(opts.quickModel);
-    saveConfig({ model });
+    setRuntimeModel(model);
     pushRecentModel(model);
     console.log(chalk.green("model →"), model);
     return;
