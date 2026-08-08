@@ -109,7 +109,22 @@ npm link
 
 Then restart Anique. Config, `USER.md`, `MEMORY.md`, skills, and sessions are kept.
 
-If you installed via npm instead:
+**Don't remember which folder you cloned into?** Find it first:
+
+```bash
+anique doctor
+# look for: Source root /path/to/anique
+```
+
+Or from the shell:
+
+```bash
+dirname "$(dirname "$(readlink -f "$(which anique)")")"
+```
+
+Then `cd` into that path and run the update commands above.
+
+If you installed via npm instead (no local clone):
 
 ```bash
 npm i -g anique@latest
@@ -637,7 +652,22 @@ npm link
 
 سپس Anique را ریستارت کنید. کانفیگ، `USER.md`، `MEMORY.md`، مهارت‌ها و جلسه‌ها حفظ می‌شوند.
 
-اگر با npm نصب کرده‌اید:
+**یادت نیست داخل کدام فولدر کلون کرده بودی؟** اول مسیر را پیدا کن:
+
+```bash
+anique doctor
+# دنبال این خط بگرد: Source root /path/to/anique
+```
+
+یا از شل:
+
+```bash
+dirname "$(dirname "$(readlink -f "$(which anique)")")"
+```
+
+بعد `cd` به همان مسیر و دستورات آپدیت بالا را اجرا کن.
+
+اگر با npm نصب کرده‌اید (بدون کلون محلی):
 
 ```bash
 npm i -g anique@latest
