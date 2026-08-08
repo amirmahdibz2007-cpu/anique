@@ -97,38 +97,36 @@ npx anique@latest setup && anique
 
 ### Update (from a GitHub clone)
 
-If you installed from source, update without losing memory or skills (`~/.anique` stays intact):
+Memory and skills stay in `~/.anique` — they are not wiped by an update.
+
+**Always update the folder that `anique` actually runs from** (not a random clone):
 
 ```bash
-cd anique
+SRC="$(dirname "$(dirname "$(readlink -f "$(which anique)")")")"
+echo "Updating: $SRC"
+cd "$SRC"
 git pull
 npm install
 npm run build
 npm link
+hash -r
 ```
 
-Then restart Anique. Config, `USER.md`, `MEMORY.md`, skills, and sessions are kept.
+Then **fully quit Anique** (close the TUI / terminal tab) and start it again.
 
-**Don't remember which folder you cloned into?** Find it first:
+Check that it worked:
 
 ```bash
-anique doctor
-# look for: Source root /path/to/anique
+anique doctor          # Source root should match $SRC
+cd "$SRC" && git log -1 --oneline
 ```
 
-Or from the shell:
+#### If it still looks unchanged
 
-```bash
-dirname "$(dirname "$(readlink -f "$(which anique)")")"
-```
-
-Then `cd` into that path and run the update commands above.
-
-If you installed via npm instead (no local clone):
-
-```bash
-npm i -g anique@latest
-```
+1. **`git pull` failed or said Already up to date** — repo may be private, or you have no access. You need the repo public (or a collaborator invite) and a successful `git pull` that downloads new commits.
+2. **You updated the wrong folder** — `which anique` / `anique doctor` must point at the same path you built.
+3. **Old process still running** — quit every Anique window and open a new terminal (`hash -r`).
+4. **Installed via npm, not git** — use `npm i -g anique@latest` instead of `git pull`.
 
 ---
 
@@ -640,38 +638,36 @@ npx anique@latest setup && anique
 
 ### آپدیت (از کلون GitHub)
 
-اگر از سورس نصب کرده‌اید، بدون از دست دادن حافظه و مهارت‌ها آپدیت کنید (`~/.anique` دست‌نخورده می‌ماند):
+حافظه و مهارت‌ها در `~/.anique` می‌مانند — با آپدیت پاک نمی‌شوند.
+
+**همیشه همان فولدری را آپدیت کن که `anique` واقعاً از آن اجرا می‌شود** (نه یک کلون تصادفی):
 
 ```bash
-cd anique
+SRC="$(dirname "$(dirname "$(readlink -f "$(which anique)")")")"
+echo "Updating: $SRC"
+cd "$SRC"
 git pull
 npm install
 npm run build
 npm link
+hash -r
 ```
 
-سپس Anique را ریستارت کنید. کانفیگ، `USER.md`، `MEMORY.md`، مهارت‌ها و جلسه‌ها حفظ می‌شوند.
+بعد **Anique را کامل ببند** (TUI / تب ترمینال) و دوباره باز کن.
 
-**یادت نیست داخل کدام فولدر کلون کرده بودی؟** اول مسیر را پیدا کن:
+برای اطمینان:
 
 ```bash
-anique doctor
-# دنبال این خط بگرد: Source root /path/to/anique
+anique doctor          # Source root باید همان $SRC باشد
+cd "$SRC" && git log -1 --oneline
 ```
 
-یا از شل:
+#### اگر هنوز آپدیت نشده
 
-```bash
-dirname "$(dirname "$(readlink -f "$(which anique)")")"
-```
-
-بعد `cd` به همان مسیر و دستورات آپدیت بالا را اجرا کن.
-
-اگر با npm نصب کرده‌اید (بدون کلون محلی):
-
-```bash
-npm i -g anique@latest
-```
+1. **`git pull` خطا داد یا Already up to date زد** — ریپو ممکن است private باشد یا دسترسی نداشته باشی. ریپو باید public باشد (یا collaborator باشی) و `git pull` واقعاً کامیت‌های جدید را بگیرد.
+2. **فولدر اشتباه را آپدیت کردی** — مسیر `which anique` / `anique doctor` باید همان جایی باشد که `build` زدی.
+3. **پروسه‌ی قدیمی هنوز باز است** — همهٔ پنجره‌های Anique را ببند و ترمینال جدید باز کن (`hash -r`).
+4. **با npm نصب کرده، نه از git** — به‌جای `git pull` از `npm i -g anique@latest` استفاده کن.
 
 ---
 
