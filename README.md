@@ -95,6 +95,26 @@ anique           # open the TUI
 npx anique@latest setup && anique
 ```
 
+### Update (from a GitHub clone)
+
+If you installed from source, update without losing memory or skills (`~/.anique` stays intact):
+
+```bash
+cd anique
+git pull
+npm install
+npm run build
+npm link
+```
+
+Then restart Anique. Config, `USER.md`, `MEMORY.md`, skills, and sessions are kept.
+
+If you installed via npm instead:
+
+```bash
+npm i -g anique@latest
+```
+
 ---
 
 ## 🧭 Lenses
@@ -601,6 +621,26 @@ anique           # باز کردن TUI
 
 ```bash
 npx anique@latest setup && anique
+```
+
+### آپدیت (از کلون GitHub)
+
+اگر از سورس نصب کرده‌اید، بدون از دست دادن حافظه و مهارت‌ها آپدیت کنید (`~/.anique` دست‌نخورده می‌ماند):
+
+```bash
+cd anique
+git pull
+npm install
+npm run build
+npm link
+```
+
+سپس Anique را ریستارت کنید. کانفیگ، `USER.md`، `MEMORY.md`، مهارت‌ها و جلسه‌ها حفظ می‌شوند.
+
+اگر با npm نصب کرده‌اید:
+
+```bash
+npm i -g anique@latest
 ```
 
 ---
